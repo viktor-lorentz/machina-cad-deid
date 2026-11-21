@@ -402,3 +402,12 @@ Remaining misses (~80): persons (title-block initials, lone surnames in author l
 short vendor acronyms, projects without cue. Next for B: title-block initials/persons.
 
 - B (Sat ~22:15 ET): **registry16f** = 16e + title-block persons/initials (`deid/persons.py`, 96 values, added precision 100%): RAND 82% / ALL 79% (persons RAND 73 -> 81%). Use 16f instead of 16e if the build has not started.
+
+## A (Sat ~16:10 ET): attempt 13 submitted (BB-90430234); attempt 14 building
+- a13 = registry15 + drawing/model fixes (verified on output: native broken part refs 66 -> 1 /600, drawing-stem mismatch
+  197 -> 81 /283, model-kept 43 -> 2).
+- registry16 = harvest15 (short series, initials, postcodes, legal suffixes, LIGO LAB) + vendor-all + typeharvest add3:
+  gate RAND 61 -> 65%, ALL 56 -> 61%, parts 68 -> 81%, precision 100%.
+- registry17 = registry16 + C's NER (cleaned: persons >=2 words, no titles; companies without generic words; projects
+  <=4 words, no file extensions; accounts only HOST\user): RAND 66%, ALL 62%, projects 50 -> 58%, precision 82%.
+- a14 = registry17 + OLE free-sector scrub + saved-account pseudonymisation + all drawing/model fixes (code 4c7afbf).
