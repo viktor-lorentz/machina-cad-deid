@@ -65,3 +65,11 @@ Gaps (max-ours): PDF removal 214, PDF consistency 160, non-collision 96, drawing
   Rewrite: same-length replace, recompute CRC, recompress, pad zeros to csize (file length + offsets unchanged).
   500-file test: section hits 3475 -> 72, 0 errors, all same length. Harvest docProps core/custom (creator,
   lastModifiedBy, drawn/checked by) as *_field. -> attempt 8 (needs re-harvest).
+
+## Sat 11:00 ET — attempt 7 = 562 (+1)
+- OLE acct 2->4, residue 2->4. drawing/model flat at 164 despite native renames 399->131 -> renames are NOT the cause.
+  Hypothesis: part numbers replaced in drawing text, model file keeps original name. A/B in attempt 9 via
+  DEID_KEEP_FILE_CODES=/data/registry/stems.txt (parts 4901 -> 3161, GT part recall 76% -> 63%).
+- attempt 8 = a7 + swx + SW docProps harvest. Caught twice before shipping: junk field values ("-.01", dates, NA)
+  and per-file propagation of "Author"/"Owner"/"ISO 2768" (would rename XML property names). Now: field_ok +
+  propagation only for person/account values, PROP_WORDS excluded.
