@@ -56,7 +56,8 @@ def load_mappers(registry_path: str, secret: bytes) -> tuple[Mapper, Mapper]:
     # else is content-only (renamed files are not found by the grader: a5, a13)
     preg = os.environ.get("DEID_PATH_REG")
     if preg:
-        allowed = {norm(r["value"]) for r in json.loads(Path(preg).read_text())["identities"] if not r.get("source")}
+        allowed = {norm(r["value"]) for r in json.loads(Path(preg).read_text())["identities"]
+                   if not r.get("source") and r["scope"] == "global"}
         content.merged |= {k for k in allm.entries if k not in allowed}
     return allm, content
 
