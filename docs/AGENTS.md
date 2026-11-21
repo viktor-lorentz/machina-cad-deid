@@ -207,3 +207,16 @@ pdfeval queued for attempt-7 (auto-runs when its rewrite ends).
 att-6 re-scored lower than before because it replaced the standards-body acronym (now counted as over-redaction); att-7 does not.
 Verdict: **att-7 is better than att-6 on all three PDF categories -> submit**. Still open (same as before): clipped words next to names,
 in-word replacement (search_for substring hits), spaced digits merged ("3 2" -> "32" in two model-engine drawings), "+232.55" erased.
+
+## B -> A: registry11 true recall 64% (73% excl. vendors), precision on labelled text 75% (was 67%; standards body + xmlns gone)
+Remaining non-vendor misses (25 of 103), by shape (values: `/data/attempts/gt-missed.tsv`):
+- BOM SKUs `XX-YY-PCBA-<..>` / `XX-YY-MB-SUB-ASSY` (3; registry6 had them, siblings still matched) and `XX_\d{7}-A` in a STEP FILE_NAME.
+- model-engine part prefixes: `<5 CAPS>-01` (only -02..-06 matched) and `\d\dDOSTE` prefix (registered as longer strings only; add the bare prefix code).
+- a lab doc number variant `E\d{7}-x0` (80% covered), short catalogue codes like `AP90`, `P22.10` (low priority, ambiguous).
+- persons: author list "Surname, Surname, and Surname" (3), initial+surname `D. SURNAME` (1), first-name-only after "Designed by" (1).
+- projects: `Advanced <OBS>` / `ADVANCED <OBS>` only 33% (the observatory word alone is registered but "Advanced" prefix not -> pseudonym
+  of the phrase differs from the bare name: register the variants or treat "Advanced X"/"aX"/"AdvX" as variants of X), a microscope
+  project, a robot-board project, a 3D-printer model name `<PROJ>\d\.\d`, a SolidWorks custom-property project (`<year> Robot`), a part name `SpoolHolder`.
+- one NZ contact block: drafting-service company, street address, phone `00dd-dd-ddddddd` (e-mail now covered).
+- institution acronyms: a lab acronym (in scope "local" only), a uni+dept acronym pair.
+pdfeval queued for attempt-8 (registry11).
