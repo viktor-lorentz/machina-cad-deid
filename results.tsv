@@ -4,4 +4,4 @@ e68bd4d	982	yes: attempt-1 receipt BB-E6B99B00 (Fri 10:49 PM ET)	265	attempt-1b:
 ebde0e6	985	yes: attempt-2 receipt BB-62DF6234 (Sat 02:13 ET)	266	attempt-2: + path renames + zip recursion; found=1 usable=1 deid_content=0.978 deid_path=1.0; leaky files 5698 (was 176k)
 9c56746	984	yes: attempt-3 receipt BB-06E83B6F (Sat 03:32 ET)	397	attempt-3: PDF stream-corruption fix + PDF page-text replace (one-line fitted) + OLE in-place property sets + registry v2; strict-PDF removed 0.96 consistent 0.82 (content ids); upload verified 188756 objs/139365485413 B
 4763b59	987	yes: attempt-4 receipt BB-47D4E482 (Sat ~04:10 ET), upload verified 188756/139368964584 B	395	attempt-4: + OLE full-stream replacement (>=5B), PDF line-wrapped names, registry v3 (no license prose); leaky files 6414 (was 7414); sldprt 953 (was 1657)
-5	616ba1d	BB-E3346D04	pending	registry6 recall pass (GT 18->59%), ext-safe paths, middle-band redaction; local 983; strict scope-change 473 (a4 577)
+5	616ba1d	BB-E3346D04	508	registry6 recall pass (GT 18->59%), ext-safe paths, middle-band redaction; local 983; strict scope-change 473 (a4 577)

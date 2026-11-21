@@ -8,3 +8,10 @@ Baseline (input copied unchanged): 292 / 1000.
 | 2 | Sat 02:13 | + path renames + zip recursion (ebde0e6) | **266** | same as #1 except leakage 1/20 | renames safe (relationships unchanged); PDF stream corruption bug present in #1-#2 |
 | 3 | Sat 03:32 | PDF corruption fix + PDF page text + OLE in-place props + registry v2 (9c56746) | **397** | leak 5/20, consistency 4/15, distinct 3/10, relationships 11/20 (2 n/c), eng 10/15, OLE hidden 2/10, packaging 5/10 (2 n/c), **PDF removal 86/300**, **PDF consistency 40/200**, **non-collision 4/100**, drawing/model 175/200 (−7), OLE saved-account 1/25, OLE residue 1/25, OLE preview 25/25, OLE integrity 25/25 | gaps: PDF removal 214, PDF consistency 160, non-collision 96, drawing/model 25, OLE saved 24, OLE residue 24, leak 15 |
 | 4 | Sat 04:01 | + OLE full-stream replacement, wrapped PDF names, license-prose filter (4763b59) | **395** | same as #3 except PDF consistency 39/200 (−1), drawing/model 174/200 (−1); OLE saved/residue unchanged 1/25 | OLE changes did not reach the scorer's sampled values |
+
+## Attempt 5 — 508 (BB-E3346D04, Sat 8:15 AM ET)
+registry6 recall pass (GT recall 18% -> 59%), extension-safe renames, middle-band redaction, compositional pseudonyms, OLE field rewrite.
+leak 9/20 · consistency 5/15 · distinct 2/10 · relationships 11/20 · engineering 10/15 · OLE hidden 4/10 · packaging 3/10 ·
+PDF removal 163/300 · PDF consistency 71/200 · triplets 22/100 · drawing/model 154/200 · OLE acct 2/25 · OLE residue 2/25 · OLE preview 25/25 · OLE integrity 25/25
+Gaps (max-ours): PDF removal 137, PDF consistency 129, triplets 78, drawing/model 46, OLE acct 23, OLE residue 23.
+Regressions vs a3: drawing/model -21, packaging -2, distinct -1.
