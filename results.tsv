@@ -1,4 +1,4 @@
 commit	local_score	submitted	server_score	notes
 c6ad2b0	829	no		attempt-1 build: content-only, cleaned registry; found=1 usable=1 deid_content=0.755
 e68bd4d	982	yes: attempt-1 receipt BB-E6B99B00 (Fri 10:49 PM ET)	scoring	attempt-1b: + multi-line STEP comments; found=1 usable=1 deid_content=0.974
-ebde0e6	985	pending		attempt-2: + path renames + zip recursion; found=1 usable=1 deid_content=0.978 deid_path=1.0; leaky files 5698 (was 176k)
+ebde0e6	985	uploaded+verified to attempt-2/ (not submitted yet)		attempt-2: + path renames + zip recursion; found=1 usable=1 deid_content=0.978 deid_path=1.0; leaky files 5698 (was 176k)
