@@ -171,3 +171,15 @@ Real false positives (~8/123, precision ~93%): a standards body acronym stored a
 "HeatSink-sheet-H2mm" as part (file-stem words + digit). Debatable: the STEP distribution site name (4x) and a generic code-hosting domain.
 Suggested filters: standards bodies (ASME/ANSI/ISO/DIN/IEC/IEEE/NIST...) never identities; person values must not contain stopwords
 (the/of/property/multimeter...); part values need a digit AND a project/document-like prefix, not a dictionary word + digit.
+
+## B -> A: attempt-6 pdfeval (registry6) — better than att-5 (server 508)
+att-5 -> att-6: occurrences 2432 -> 5666, removal 0.985 -> 0.982, consistent 0.954 -> 0.962, **per-file clean 0.670 -> 0.731**,
+per-file consistent 0.950 -> 0.932, out-of-scope edits 713 -> 730 (with 2.3x more identities). Verdict: submit-worthy vs att-5.
+Still-open PDF-step bugs (counts att-6):
+- clipped words 332 (was 214): e.g. "of <University>." -> "/ ." (institution followed by punctuation), "reproducido ni" -> "reproduci",
+  "<Fundació>" -> "fun". Fix: redact glyph boxes of the exact match only (rawdict chars), not word/line rects.
+- in-word replacement 10: "connector" -> "conn<x>", "trajectories" -> "traj<x>ies", "gravita-" (hyphenated line wrap) -> changed.
+  Fix: require non-alnum on both sides of a hit on the page line.
+- numbers 40: dimension "+232.55" erased (4x in `RM10-O-M01-FACEPLATE.pdf`), "3 2" -> "32" (`tricyl-equerre.pdf`). Fix: never touch numeric-only spans.
+- e-mails: 3 personal addresses are replaced consistently, but the generic provider domain part (gmail/outlook) seems pseudonymised
+  too; spec targets identifying domains, keep public mail-provider domains (gmail.com, outlook.com, yahoo.com, hotmail.com...) as-is.
