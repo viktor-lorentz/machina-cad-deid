@@ -385,7 +385,7 @@ class _UserPathMapper:
             def e(t: str) -> bytes:
                 return t.encode(enc)
             sep = b"(?:" + re.escape(e("\\")) + b"|" + re.escape(e("/")) + b")"
-            pre = b"(?i:" + b"|".join(re.escape(e(w)) for w in ("users", "documents and settings", "home")) + b")"
+            pre = b"(?i:" + b"|".join(re.escape(e(w)) for w in ("users", "documents and settings", "docume~1", "home")) + b")"
             ch = b"(?:[A-Za-z0-9._ -]\x00)" if enc == "utf-16-le" else b"[A-Za-z0-9._ -]"
             cls._RX[enc] = re.compile(sep + pre + sep + b"(" + ch + b"{2,32}?)" + b"(?=" + sep + b")")
         return cls._RX[enc]

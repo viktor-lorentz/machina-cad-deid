@@ -35,7 +35,7 @@ import olefile
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from deid.formats import oleps  # noqa: E402
 
-USERPATH = re.compile(r"(?:[a-z]:\\(?:users|documents and settings|doc utilisateur|benutzer|usuarios|utilisateurs)\\|/home/|/users/)"
+USERPATH = re.compile(r"(?:[a-z]:\\(?:users|documents and settings|docume~1|doc utilisateur|benutzer|usuarios|utilisateurs)\\|/home/|/users/)"
                       r"([a-z0-9._ -]{2,32}?)(?=[\\/])")
 BAD_USERS = {"public", "default", "all users", "administrator", "admin", "user", "users", "shared", "default user"}
 SKIP = os.environ.get("OLECHECK_SKIP_GENERIC") == "1"   # default: the grader counts generic accounts too
