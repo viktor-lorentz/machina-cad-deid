@@ -66,7 +66,11 @@ def map_path(rel: str, allm: Mapper, content: Mapper, rename: bool) -> str:
             stem, dot, ext = seg.rpartition(".")
             bits = stem.split("__")
             new = "__".join(allm.pseudonym(b) if b.lower() in allm.entries else b for b in bits) + dot + ext
-        new = content.replace_text(new)
+        if i == len(parts) - 1 and "." in new:
+            stem, dot, ext = new.rpartition(".")
+            new = content.replace_text(stem) + dot + ext  # the extension is never renamed
+        else:
+            new = content.replace_text(new)
         out.append(new)
     return "/".join(out)
 

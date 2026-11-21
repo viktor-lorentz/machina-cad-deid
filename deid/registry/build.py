@@ -186,6 +186,11 @@ def _is_signal_name(v: str) -> bool:
                for x in segs) >= 2
 
 
+FILE_EXT_RX = re.compile(r"\.(?:sldprt|sldasm|slddrw|step|stp|stl|iges|igs|ipt|iam|idw|dwg|dxf|pdf|par|psm|asm|"
+                         r"prt|drw|catpart|catproduct|x_t|x_b|sat|f3d|fcstd|3mf|obj|wrl|png|jpg|svg|zip|txt)$",
+                         re.I)
+
+
 def is_junk(v: str, kind: str, files: int, from_path: bool) -> bool:
     if from_path or kind == "part":  # part numbers were filtered by their own rules
         return False
@@ -247,6 +252,12 @@ def build(candidates_path: str, out_path: str) -> dict:
             mode_ok = os.environ.get("DEID_PARTS", "smart") != "none"
             if not mode_ok:
                 continue
+        if row["kind"] in ("partno", "dwgno", "codechain"):
+            v0 = FILE_EXT_RX.sub("", row["value"])
+            if v0 != row["value"]:
+                if len(v0) < 4:
+                    continue
+                row = dict(row, value=v0)
         if row["kind"] in ("partno", "dwgno"):
             # DEID_PARTS: none | smart (default: PDF-printed codes only) | all (also bare file-name codes)
             mode = os.environ.get("DEID_PARTS", "smart")
