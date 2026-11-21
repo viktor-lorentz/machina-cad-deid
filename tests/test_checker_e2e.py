@@ -40,3 +40,27 @@ def test_rewrite_then_check(tmp_path, capsys):
     leakscan.run(str(out), str(reg), secret, workers=2)
     err = capsys.readouterr().err
     assert "email" in err and "x.y@secretcorp.com" in err
+
+
+def test_pdfcheck_pair(tmp_path):
+    import fitz
+
+    from deid import pdfcheck
+    from deid.registry.pseudonym import Mapper
+
+    m = Mapper(secret=b"s")
+    m.add("Jane Doe", "person")
+    pseudo = m.pseudonym("Jane Doe")
+
+    def mk(path, text):
+        d = fitz.open()
+        d.new_page().insert_text((72, 72), text)
+        d.save(path)
+
+    mk(tmp_path / "a.pdf", "Drawn by Jane Doe")
+    mk(tmp_path / "good.pdf", f"Drawn by {pseudo}")
+    mk(tmp_path / "bad.pdf", "Drawn by Jane Doe")
+    g = pdfcheck.check_pair(str(tmp_path / "a.pdf"), str(tmp_path / "good.pdf"), m)
+    b = pdfcheck.check_pair(str(tmp_path / "a.pdf"), str(tmp_path / "bad.pdf"), m)
+    assert (g["occ"], g["removed"], g["consistent"]) == (1, 1, 1)
+    assert (b["occ"], b["removed"], b["consistent"]) == (1, 0, 0)

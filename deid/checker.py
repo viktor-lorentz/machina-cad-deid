@@ -102,6 +102,10 @@ def check_one(args):
     res["deid_strict"] = int(not leaks)
     res["leaks"] = sum(content.values())
     res["ind"] = {k[4:]: v for k, v in leaks.items() if k.startswith("IND:")}
+    if res["ext"] == "pdf":
+        from deid import leakscan, pdfcheck
+
+        res["pdf"] = pdfcheck.check_pair(src, dst, leakscan.G["allm"])
     return res
 
 
@@ -113,6 +117,8 @@ def run(in_root: str, out_root: str, results_json: str, reg: str, secret: bytes,
     files = files[:n]
     tot = Counter()
     ind_tot: Counter = Counter()
+    pdf_tot: Counter = Counter()
+    pdf_pairs: set = set()
     by_ext: dict = {}
     with Pool(workers or os.cpu_count(), initializer=leak_init, initargs=(reg, secret)) as pool:
         for r in pool.imap_unordered(check_one, [(in_root, out_root, f, mapping.get(f, f)) for f in files],
@@ -120,6 +126,11 @@ def run(in_root: str, out_root: str, results_json: str, reg: str, secret: bytes,
             for k in ("found", "usable", "deid", "path_deid", "deid_strict"):
                 tot[k] += r.get(k, 0)
             ind_tot.update(r.get("ind", {}))
+            p = r.get("pdf")
+            if p:
+                for k in ("occ", "removed", "consistent"):
+                    pdf_tot[k] += p[k]
+                pdf_pairs |= p["pairs"]
             c = by_ext.setdefault(r["ext"], Counter())
             c["n"] += 1
             c["usable"] += r["usable"]
@@ -133,6 +144,15 @@ def run(in_root: str, out_root: str, results_json: str, reg: str, secret: bytes,
           f"deid(content)={rates['deid']:.4f} deid(path)={rates['path_deid']:.4f} "
           f"deid_strict={rates['deid_strict']:.4f}  LOCAL SCORE={score}  STRICT SCORE={strict}", file=sys.stderr)
     print("independent findings by kind:", ind_tot.most_common(20), file=sys.stderr)
+    from deid.pdfcheck import collisions
+
+    occ = pdf_tot["occ"] or 1
+    rates["pdf_removed"] = pdf_tot["removed"] / occ
+    rates["pdf_consistent"] = pdf_tot["consistent"] / occ
+    rates["pdf_collisions"] = collisions(pdf_pairs)
+    print(f"PDF page text (server: 600 pts): identity occurrences={pdf_tot['occ']} "
+          f"removed={rates['pdf_removed']:.3f} consistent={rates['pdf_consistent']:.3f} "
+          f"collisions={rates['pdf_collisions']}", file=sys.stderr)
     from deid import consistency
 
     dg, dok, dbad = consistency.duplicates(in_root, out_root, mapping, files)
