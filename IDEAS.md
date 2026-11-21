@@ -39,3 +39,11 @@ Gaps (max-ours): PDF removal 214, PDF consistency 160, non-collision 96, drawing
   institution junk ("Technology Massachusetts Institute") caused 230 'technology' scope-changes -> filtered.
 - Strict pdfeval scope-change: a3 333, a4 577, a5#2 696. ~200 of a5's are accented identities (Amigó, Fundació, für)
   that the checker can't see (ascii-ignore) -> artifact, not a real regression.
+
+## Sat 08:45 ET — attempt 5 = 508 (+111)
+- Drawing/model 175 -> 154: native CAD basenames renamed 118 (a3) -> 2023 (a5) by part-number identities; SW/Inventor
+  refs inside compressed streams break. Attempt 6: path mapper excludes kind=part (content still replaced).
+- Part precision: drop pure-digit (LEGO catalogue), <6 chars (HX711, 0P01C fragments), non-ASCII part codes.
+- Project coinages (AdvLIGO, mesoSPIM, BeBoPr++) with plain-word CamelCase filter (BasePlate, microSD, alloys).
+- GT recall registry7: 61% (70% excl vendor); person 75%.
+- Next gaps: PDF removal 137, PDF consistency 129, triplets 78. Unknown emails (100) + phones (46) in pdfeval -> harvest them.
