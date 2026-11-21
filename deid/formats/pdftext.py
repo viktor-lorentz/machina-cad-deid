@@ -208,6 +208,7 @@ _CAPW = r"[A-ZÀ-Ý][A-Za-zÀ-ÿ'-]+"
 INSTITUTION_RX = re.compile(
     rf"((?:{_CAPW}[ \t]+){{0,2}}{_INST}(?:[ \t]+(?:of|OF|für|FÜR|de|DE|for|FOR|di|DI|del|des|du)"
     rf"(?:[ \t]+(?:und|and|y|et|e|AND|UND)?[ \t]*{_CAPW}){{1,4}}|[ \t]+[A-Z]{{2,6}}\b))")
+US_PHONE_RX = re.compile(r"(?<![\d.(])(\(\d{3}\)\s?\d{3}-\d{4}|\d{3}\.\d{3}\.\d{4})(?![\d.])")
 DOTTED_PHONE_RX = re.compile(r"(?<![\d.])(\d{2,3}(?:\.\d{2,3}){3,4})(?![\d.])")
 
 
@@ -273,6 +274,8 @@ def harvest_text(text: str) -> list[tuple[str, str]]:
         v = " ".join(toks)
         if len(toks) >= 2:
             out.append((v, "company"))
+    for m in US_PHONE_RX.finditer(text):
+        out.append((m.group(1), "phone"))
     for m in DOTTED_PHONE_RX.finditer(text):
         if len(re.sub(r"\D", "", m.group(1))) >= 8:
             out.append((m.group(1), "phone"))
