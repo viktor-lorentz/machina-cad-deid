@@ -41,6 +41,6 @@ def test_unknown_candidates():
     from deid.detect import Explainer
 
     ex = Explainer(pseudonyms=["bazodi kemiru"])
-    txt = "Drawn by: Peter Novak\nAcme Widgets GmbH\nUniversity of Freiburg\n(c) 2019 Foobar Labs\nDrawn by Bazodi Kemiru"
+    txt = "Drawn by: Peter Novak\nAcme Widgets GmbH\nUniversity of Freiburg\nCopyright 2019 Foobar Labs\nDrawn by Bazodi Kemiru"
     kinds = sorted(k for k, _ in pdfeval.unknown_candidates(txt, ex))
     assert kinds == ["company", "copyright", "institution", "label-name"], kinds
