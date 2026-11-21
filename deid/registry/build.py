@@ -246,7 +246,8 @@ def build(candidates_path: str, out_path: str) -> dict:
                 continue
             row = dict(row, kind="person")
         if row["kind"] in ("project_label", "project_camel"):
-            if row["kind"] == "project_camel" and (row.get("repos", 0) > 3 or row.get("files", 0) < 2):
+            if row["kind"] == "project_camel" and (row.get("files", 0) < 2 or row.get("repos", 0) >
+                                                   (5 if row.get("files", 0) >= 10 else 3)):
                 continue
             from deid.formats.pdftext import _plain_camel
 
