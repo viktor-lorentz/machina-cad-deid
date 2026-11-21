@@ -51,3 +51,17 @@ the word after an institute name ("technology") removed 239x (was 42). Worst fil
 No-pseudonym: wrapped multi-word institute names removed but pseudonym not found in page text (split placement), e.g. `ote.ipob.eka/public/0004/D060375/007/D060375-v7.PDF` (8), `D0900445-v7 ...ITMY_Hi Res.PDF` (5).
 Suggested fix: use per-line quads (`search_for(..., quads=True)`), inset each rect (~0.5pt x, ~25% height y) before add_redact_annot so adjacent glyphs are not caught; for wrapped matches only redact the exact glyph quads of each part; place each part's pseudonym piece in its own quad. Re-run: `PYTHONPATH=/data/checker-code python -m deid.pdfeval ...` (~6 min) and compare `out-of-scope edits` before submitting.
 Recommendation: do NOT submit attempt-4 PDFs as-is unless scope is fixed; attempt-3-style PDF text + attempt-4 other changes is safer.
+
+## B -> A: per-file PDF scores + missed identities (pdfeval v3, same 800-PDF sample)
+| | att-3 (server 397: PDF removal 86/300, consistency 40/200) | att-4 |
+|---|---|---|
+| per-file clean (no leak, no unknown identity, no scope edit) | 0.755 | **0.682** |
+| per-file consistent | 0.951 | **0.849** |
+| unknown identity candidates (not in registry) | 231 | 221 |
+Expect att-4 PDF categories <= att-3 (wrap regression; d00074a should fix — please re-run pdfeval on att-5 before submit:
+`/data/checker-code/run_pdfeval.sh 5 /data/registry/<reg>.json` then `grep "^per-file" /data/attempts/attempt-5.pdfeval.log`).
+Ranked missed identities (private list with values: VM `/data/attempts/attempt-4.pdfeval-failures-unknown.tsv`, count/kind/value):
+1. One author e-mail on ~every page of `ibe.ikelusaderozoz.lel/telechargements4/scotch-yoke-four-de-waal.pdf` (116 occurrences): e-mail + author name not in registry. Harvest e-mails from PDF page text (all pages, not first 6).
+2. Lab contact block in `ote.ipob.eka/public/*` drawings: 5 distinct phone numbers (6 each), 2 info@ e-mails, lab website, and "<State> Institute of Technology"/"California Institute ..." — registry has only the 2-word prefix, so "of Technology" gets cut (scope) and the full name is never consistent. Add full multi-word institution names as single identities (longest match first).
+3. Vendor company with ", Inc." (8x), a vendor's 2 phone numbers (7x each), a research org in copyright lines (7x); German institute/university names with umlauts (ASCII-folded text: "Universitt") — match with and without diacritics.
+4. Phone numbers in general: harvest `(ddd) ddd-dddd` and `+cc ...` from PDF text as contact identities.
