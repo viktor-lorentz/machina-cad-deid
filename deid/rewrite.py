@@ -226,7 +226,10 @@ def rw_ole(data: bytes, m: Mapper) -> bytes:
     def transform(name: str, body: bytes) -> bytes:
         if name.startswith("\x05"):
             return m.replace_bytes(body, ("ascii", "utf-16-le"))
-        return _guarded(body, m)
+        # other streams: short length-prefixed strings (user names, paths) are
+        # missed by run-guarding; a word-bounded match of a registered name of
+        # >=5 bytes does not occur by chance in binary data
+        return m.replace_bytes(body, ("ascii", "utf-16-le"), accept=lambda src, a, b: b - a >= 5)
 
     return ole_inplace.rewrite(data, transform)
 
