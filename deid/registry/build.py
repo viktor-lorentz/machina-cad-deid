@@ -166,7 +166,7 @@ MAIL_PROVIDERS_SLD = {"gmail", "yahoo", "hotmail", "outlook", "live", "icloud", 
 
 
 def is_junk(v: str, kind: str, files: int, from_path: bool) -> bool:
-    if from_path:
+    if from_path or kind == "part":  # part numbers were filtered by their own rules
         return False
     a = alnum_len(v)
     if JUNK.search(v) or COMPONENT_VENDORS.search(v):
