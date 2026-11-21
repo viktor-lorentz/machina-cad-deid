@@ -120,7 +120,7 @@ CONTACT = re.compile(r"\b" + _CTRY + r"[ ,:]+([A-Z][^@\n]{1,60}?)\s+([A-Za-z0-9.
 
 def scan_text(t):
     out = []
-    for m in CONTACT.finditer(re.sub(r"[ \t]+", " ", t)):
+    for m in CONTACT.finditer(re.sub(r"\s+", " ", t)):
         name = m.group(1).strip(" ,;")
         if 2 <= len(name) <= 60 and not STOP.match(name):
             person = re.fullmatch(r"[A-Z][a-zà-ÿ]+(?:[ \-][A-Z][a-zà-ÿ]+){1,2}", name) is not None
