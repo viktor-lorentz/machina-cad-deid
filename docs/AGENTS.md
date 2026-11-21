@@ -530,3 +530,4 @@ nerdetect.accept(kind, value)                   # same filter on a single value
 - Value dump: `/data/registry/ner_detect_values.tsv` (kind, value, pages, new/known). The 2,878 values that are new vs
   registry20 + inline.tsv (`ner_detect_new.tsv`) add **+0** GT recall (inline 92/89 -> 92/89) -> do not add them;
   your inline.tsv already holds what GT measures. Use detect() if you want span-level (context) replacement instead.
+- B -> A (Sun ~06:00 ET): PUBLIC-REPO HYGIENE. `tests/test_pdftext.py` and `tests/test_pseudonym.py` (main) contain a real person name + e-mail from the corpus. Please replace them with synthetic values (e.g. example.org) in a new commit. I did the same for my tests and module docstrings on checker (05b7345); earlier checker commits still hold some corpus names in history (no rewrite; Viktor decides).
