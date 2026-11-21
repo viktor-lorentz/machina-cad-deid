@@ -65,3 +65,44 @@ Ranked missed identities (private list with values: VM `/data/attempts/attempt-4
 2. Lab contact block in `ote.ipob.eka/public/*` drawings: 5 distinct phone numbers (6 each), 2 info@ e-mails, lab website, and "<State> Institute of Technology"/"California Institute ..." — registry has only the 2-word prefix, so "of Technology" gets cut (scope) and the full name is never consistent. Add full multi-word institution names as single identities (longest match first).
 3. Vendor company with ", Inc." (8x), a vendor's 2 phone numbers (7x each), a research org in copyright lines (7x); German institute/university names with umlauts (ASCII-folded text: "Universitt") — match with and without diacritics.
 4. Phone numbers in general: harvest `(ddd) ddd-dddd` and `+cc ...` from PDF text as contact identities.
+
+## B -> A: TRUE recall vs hand-labelled ground truth (registry5, global scope)
+Sample: 40 random held-out PDF pages + 20 held-out non-PDF files (13 were pure ACIS geometry, no identifiers). I read every
+sample and labelled every identifying string per the spec: 122 strings. Private files on VM (originals, never commit):
+`/data/attempts/gt-truth.tsv` (ground truth), `/data/attempts/gt-missed.tsv` (misses), re-run `python gt_recall.py <registry>` in /data/checker-code.
+
+| type | n | in registry (global, full) | partial | full in any scope |
+|---|---|---|---|---|
+| part/document number | 38 | **0%** | 0% | 0% |
+| person | 20 | 35% | 0% | 45% |
+| institution | 13 | 15% | 23% | 23% |
+| project | 12 | 17% | 0% | 17% |
+| vendor company (3rd party) | 11 | 0% | 0% | 18% |
+| vendor part number | 8 | 0% | 0% | 0% |
+| url/host | 7 | 71% | | 71% |
+| email | 4 | 75% | | 75% |
+| company (own) | 3 | 67% | | 67% |
+| phone | 3 | **0%** | | 0% |
+| account | 2 | 100% | | 100% |
+| address | 1 | 0% | | 0% |
+| **total** | 122 | **19%** | 2% | 23% |
+| total excl. vendors | 103 | 22% | 3% | 25% |
+
+Top 20 misses, described by shape (values in gt-missed.tsv), in the order I would harvest them:
+1-6. Lab drawing/document numbers `[DETG]\d{6,7}(-v\d+|-\d{2}(-[A-Z])?|-x\d)?` (16 of 38 part numbers; they also appear in file names and parts lists).
+7. BOM SKUs with a project prefix `XX-YY-<WORD>(-<WORD>)*` (3 in one BOM) and `XX_\d{7}-[A-Z]` in a STEP FILE_NAME.
+8. 3D-printer project part codes `<PROJ>\d\.\d-M\d\dC\d\d\.\dP\d\d[A-Z]` (2) and the project name itself.
+9. Supplier-review doc codes `RM10-[A-Z]-M\d\d(-<WORD>)?` (3) and model-engine part prefixes `<5-7 CAPS>-\d\d` (2).
+10. Title-block persons written as initial + surname: `X. SURNAME`, `X.SURNAME` (4), 3-letter initials pairs.
+11. Author lists in notes headers: `Surname, Surname, and Surname` (3) and first name only after "Designed by"-style labels (1).
+12. Persons in title blocks of a Spanish/Catalan printer project (2 names, 4 occurrences) and 3-word names (2).
+13. Full institution names `<STATE> INSTITUTE OF TECHNOLOGY` only partly covered (61-65%) -> add the full name as one identity.
+14. Non-English institutions: `Institut für ...` (2), `Fundació <ACR>` (2); diacritics -> also match ASCII-folded.
+15. Institution acronyms: 4-letter uni acronyms, `<UNI> <DEPT>` pairs, a lab acronym (in "any scope" but not global).
+16. Phones: Spanish `dd.ddd.dd.dd` (2), NZ `00dd-dd-ddddddd` (1). Harvest phone shapes from title blocks/contact blocks.
+17. One contact block with company + street address + e-mail + phone + person, repeated on every page of one PDF.
+18. Project names: observatory project name and its short forms (`a<NAME>`, `Adv<NAME>`, `Advanced <NAME>`), a microscope project, a robot board project, a course code `CMPE\d{4}`.
+19. Host names: a vendor site (in a STEP header) and a single-board-computer site in a paper.
+20. SolidWorks custom-property project names (e.g. `<year> Robot`).
+Priority by points: part/doc numbers (31% of all identities, 0% recall) >> persons (initial+surname) > institutions (full + acronyms + diacritics) > projects (repo-name variants) > phones/addresses.
+Scope warning: harvest numbers by context (title-block DWG NO / PART NUMBER / ITEM rows / file-name stems), not by bare regex, or standard numbers (DIN/ISO, screw sizes like 8-32 UNC) will be over-redacted.
