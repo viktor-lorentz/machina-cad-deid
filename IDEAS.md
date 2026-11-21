@@ -25,3 +25,7 @@ Gaps (max-ours): PDF removal 214, PDF consistency 160, non-collision 96, drawing
 - attempt-5 (building): near-label surnames in PDF title blocks (repo-local filter), middle-band redaction (spares neighbour lines), per-line pseudonym slices, OLE field-level author/last-saved-by incl. cp1252 + generic accounts (scope=field).
 - TODO: drawing/model regression — suspect title-block part names/numbers replaced in PDF but not in model (or vice versa). Investigate pairs.
 - TODO: org acronyms (IIT, COSMIIC, NNP) and "RELEASED BY X".
+- attempt-4 = 395. OLE categories flat because surviving OLE field values were generic/filtered accounts
+  ('map' 901 files, Administrator 319, Operator 240, LECOMTE, 09737602, Beep, portable, Séba cp1252): attempt-5 field scope fixes.
+- drawing/model drop is NOT renames (native basename renames 864 (#2) vs 892 (#3)); suspect full-height redaction boxes (fixed in #5).
+- CJK names (e.g. 黄海生) cannot get same-length pseudonyms yet (generator only maps a-z/0-9).
