@@ -42,7 +42,7 @@ bg gr pt ie is ee lv lt si hr rs ua by ru kz tr il cn jp kr tw hk sg in id my th
 ar cl pe za eg info biz me dev ai tech xyz parts eu app cloud site online space store shop design
 engineering tools works systems science lab academy""".split())
 PLACEHOLDER = re.compile(r"^(?:NAUO|PERSON|ORGANIZATION|ORG|PER|PDF|SDR|PROD|PD)[-_]|_(?:NAME|ID|DESCRIPTION)$", re.I)
-VENDOR = re.compile(r"kicad|stepup|ksu mcad|zwcad|step tools|steptools|3ds\.com|netfabb|matplotlib|cairograph|"
+VENDOR = re.compile(r"^github\.com$|^gitlab\.com$|creativecommons\.org|free software foundation|^gnu\.org$|opensource\.org|^www\.github\.com$|kicad|stepup|ksu mcad|zwcad|step tools|steptools|3ds\.com|netfabb|matplotlib|cairograph|"
                     r"fontawesome|openstreetmap|osm\.org|naturalearth|protomaps|pdf-tools|aiim\.org|iec\.ch|"
                     r"solidworks|autodesk|dassault|siemens|ptc\.com|spatial|adobe|microsoft|freecad|onshape|"
                     r"opencascade|ugs|parasolid|acis|inventor|catia|creo|zwsoft|gstarcad|bricscad|draftsight|"
@@ -118,6 +118,34 @@ COMPONENT_VENDORS = re.compile(r"alibre|pcbnew|te connectivity|stmicro|mouser|sn
                                r"grabcad|mcmaster|misumi|thingiverse|printables|ultralibrarian|componentsearch", re.I)
 
 
+NAME_STOP = set("""
+advance bill materials material custom standard here quantity qty item part parts number no nº drawing
+drawings dwg sheet scale size rev revision date title approved checked drawn design designed tolerance
+tolerances iso din ansi gb jis unless otherwise specified dimensions finish weight mass description
+desenho pelo qual foi subsituido anders definiert information only welded aluminum steel stainless
+general notes note section detail view assembly unit units mm inch inches projection first third angle
+""".split())
+
+
+def _bad_name(v: str, kind: str) -> bool:
+    toks = re.findall(r"[^\W\d_]+", v.lower())
+    if re.search(r"\d", v) or re.fullmatch(r"[a-z]{2}-[A-Z]{2}", v):
+        return True
+    if not toks or all(t in NAME_STOP for t in toks):
+        return True
+    if kind == "person":
+        if sum(t in NAME_STOP for t in toks) >= max(1, len(toks) // 2):
+            return True
+        if len(toks) == 1 and (v.isupper() or len(v) <= 4):
+            return True
+    if kind == "company":
+        if toks[-1] in NAME_STOP or len(re.sub(r"\W", "", v)) <= 3:
+            return True
+        if re.search(r"(?i)\bfor information only\b", v):
+            return True
+    return False
+
+
 def is_junk(v: str, kind: str, files: int, from_path: bool) -> bool:
     if from_path:
         return False
@@ -127,6 +155,8 @@ def is_junk(v: str, kind: str, files: int, from_path: bool) -> bool:
     if a <= 4 and (files <= 1 or re.search(r"\d", v)):
         return True
     if kind == "account" and not re.search(r"[aeiouy]", v, re.I):
+        return True
+    if kind in ("person", "company") and _bad_name(v, kind):
         return True
     # odd internal casing like 'BgfF' or 'aBCd' from binary noise
     core = re.sub(r"[^A-Za-z]", "", v)

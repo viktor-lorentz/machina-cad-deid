@@ -69,7 +69,7 @@ STOPWORDS = {"drawn", "checked", "approved", "date", "scale", "sheet", "title", 
              "rev", "revision", "weight", "part", "number", "name", "dwg", "projection", "tolerances", "unless",
              "otherwise", "specified", "dimensions", "section", "detail", "view", "assembly", "drawing", "do",
              "not", "the", "and", "of", "for", "all", "see", "note", "notes", "qty", "item", "description",
-             "mass", "units", "page", "file", "angular", "general", "surface", "general", "standard", "type",
+             "mass", "quantity", "units", "page", "file", "angular", "general", "surface", "general", "standard", "type",
              "model", "design", "designed", "engineer", "approval", "manufacturer", "supplier", "project"}
 
 

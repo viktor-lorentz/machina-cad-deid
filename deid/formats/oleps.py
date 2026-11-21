@@ -17,10 +17,16 @@ IDENTITY_PIDS = {
     (DOCSUMMARY, 14): "person",  # Manager
     (DOCSUMMARY, 15): "company",  # Company
 }
-# Inventor "Design Tracking Properties": people / org fields
-INV_PEOPLE_PIDS = {41: "person", 42: "person", 43: "person", 44: "person", 45: "person", 46: "person",
-                   47: "person", 48: "person", 49: "person", 50: "person", 51: "person", 54: "company",
-                   55: "company", 56: "company", 57: "company"}
+# Inventor "Design Tracking Properties" (documented PIDs): people and vendor fields only
+INV_PEOPLE_PIDS = {10: "person",   # Checked By
+                   12: "person",   # Engr Approved By
+                   34: "person",   # Mfg Approved By
+                   41: "person",   # Designer
+                   42: "person",   # Engineer
+                   30: "company",  # Vendor
+                   }
+# Inventor "Design Tracking Control" stream also stores the last user (pid 16)
+INV_CONTROL = "d861fb30-6a2b-11d1-9e98-0060b03c1ca6"
 
 
 def parse(body: bytes) -> list[tuple[str, int, str]]:
@@ -86,6 +92,8 @@ def harvest(data: bytes) -> list[tuple[str, str]]:
                 kind = IDENTITY_PIDS.get((fmtid, pid))
                 if kind is None and fmtid == INV_DESIGN_TRACKING:
                     kind = INV_PEOPLE_PIDS.get(pid)
+                if kind is None and fmtid.startswith("d861fb30") and pid == 16:
+                    kind = "account"
                 if kind:
                     out.append((s, kind))
     finally:
