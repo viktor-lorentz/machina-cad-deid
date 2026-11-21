@@ -48,6 +48,19 @@ def load_mappers(registry_path: str, secret: bytes) -> tuple[Mapper, Mapper]:
     return allm, content
 
 
+def path_mapper(content: Mapper) -> Mapper:
+    """Mapper for file and folder names: no part/drawing numbers. Native CAD assemblies and
+    drawings reference parts by file name inside streams we cannot rewrite (SolidWorks 2015+),
+    so renaming part files breaks drawing/model links (attempt 5: 118 -> 2023 native renames,
+    drawing/model 175 -> 154)."""
+    pm = Mapper(secret=content.secret)
+    for k, v in content.entries.items():
+        if content.kinds.get(k) != "part":
+            pm.entries[k] = v
+            pm.kinds[k] = content.kinds.get(k)
+    return pm
+
+
 # ---------------------------------------------------------------- paths
 def map_path(rel: str, allm: Mapper, content: Mapper, rename: bool) -> str:
     if not rename:
@@ -289,7 +302,7 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
     if head.startswith(b"PK\x03\x04") and (e in ZIP_EXT) and depth < 4:
         if e in ARCHIVE_EXT and not G.get("archives", False):
             return data
-        name_map = (lambda n: map_path(n, G["allm"], m, True)) if e in ARCHIVE_EXT else None
+        name_map = (lambda n: map_path(n, G["allm"], G.get("pathm", m), True)) if e in ARCHIVE_EXT else None
         return rw_zip(data, m, name_map, depth)
     if head.startswith(OLE_MAGIC):
         try:
@@ -318,13 +331,14 @@ def _looks_text(data: bytes) -> bool:
 # ---------------------------------------------------------------- driver
 def _init(registry_path: str, secret: bytes, opts: dict) -> None:
     G["allm"], G["content"] = load_mappers(registry_path, secret)
+    G["pathm"] = path_mapper(G["content"])
     G.update(opts)
 
 
 def process(args: tuple[str, str, str]) -> tuple[str, str, str]:
     root, out_root, rel = args
     src = os.path.join(root, rel)
-    new_rel = map_path(rel, G["allm"], G["content"], G.get("rename", False))
+    new_rel = map_path(rel, G["allm"], G["pathm"], G.get("rename", False))
     dst = os.path.join(out_root, new_rel)
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     status = "same"

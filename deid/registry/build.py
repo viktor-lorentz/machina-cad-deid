@@ -281,6 +281,10 @@ def build(candidates_path: str, out_path: str) -> dict:
                 continue
             if row.get("repos", 0) > 5 or STANDARD_CODE.search(row["value"]) or _is_signal_name(row["value"]):
                 continue
+            pv = row["value"]
+            # vendor catalogue numbers (pure digits) and short model codes / fragments are not project identities
+            if len(pv) < 6 or not re.search(r"[A-Za-z]", pv) or not re.search(r"\d", pv) or not pv.isascii():
+                continue
             row = dict(row, kind="part")
             # identifying part / document numbers: project-local codes only
             v0 = row["value"]
