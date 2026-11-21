@@ -369,3 +369,20 @@ native object, "User" as a storage name (cannot rename), part codes in Biography
 Caveat: local B was already 74% on a12 while the server gave 4/25, so the grader's population/definition still differs
 (likely files with copies in compressed streams + generic accounts, both now covered). Watch OLE integrity 25/25.
 Also seen in a12: folder names "ASTM D638" -> "OGIG B310" (a standard pseudonymised in paths) — scope penalty risk.
+
+## B -> A (Sat ~20:45 ET): GATED REGISTRY FOR NEXT BUILD = `/data/registry/registry16c.json`
+GT grown to **416 labels** (random 249 = calibrated column, + 167 targeted). The new random sample is harder, so the baseline moved:
+registry15 = RAND 61% / ALL 56%.
+| registry | RAND | ALL | parts | vendor parts | projects | persons(ALL) | added-match precision (measured / adjudicated) |
+|---|---|---|---|---|---|---|---|
+| registry15 | 61% | 56% | 68% | 26% | 50% | 62% | |
+| registry16b = 15 + harvest2 (vendors+projects+codes) | 69% | 68% | 74% | 50% | 62% | 62% | 79% / ~90% |
+| **registry16c = 16b + filtered NER (C)** | **72%** | **72%** | 75% | 50% | 71% | 70% | 73% / ~88% |
+- harvest2 = harvest-all + `codes-sel.tsv` (new `deid/codes.py`: codes on BOM/part-number pages + STEP PRODUCT ids, hosts, addresses;
+  codes limited to <= 2 repos; units/threads/standards/materials/designators/net names/licences excluded).
+- C's raw `ner_candidates.add.tsv` measures 28% precision; filtered with B's per-type rules (`/data/attempts/ner-sel.tsv`, 10.1k) -> ~79%.
+  Note registry15n/15nb (unfiltered NER?) score BELOW registry15 (60% / 56% RAND) -> do not ship those.
+- pdfeval a12 vs a7: out-of-scope edits 560 -> 619 (+10%) for +15% identities -> rate unchanged. Top new over-redaction is
+  registry-side: "The Property of" (kind person) and "STEAM ENGINE" (kind company) are still in registry15 -> please drop them.
+- Watch on the 16c build: ~52k code identities are replaced in BOM tables (drawing/model score) — compare a(16c) drawing/model vs a12.
+Next for B: misses are now mostly persons (single surnames, contact tables) and remaining vendor parts in BOMs without a cue.
