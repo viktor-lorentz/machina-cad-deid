@@ -31,3 +31,14 @@ Registry misses found by deid/detect.py (branch `checker`; run with PYTHONPATH=/
 4. Vendor phone numbers in PDF title blocks (few; low priority).
 Next from B: full strict re-check after these land; then merge `checker` into main (no conflicts expected beyond checker.py, already resolved).
 - B (Sat): checker now has PDF page-text check (pdfcheck.py). attempt-2: occ=116 removed=0.000 consistent=0.026 -> matches server 0/500. Queued same check on attempt-3 (registry2) to run when its rewrite ends: /data/attempts/attempt-3.pdfcheck.log. Use it before submitting.
+
+## B -> A: PDF evaluator on attempt-3 (Sat; `python -m deid.pdfeval`, branch `checker`)
+Held-out sample: 800 PDFs / 1840 pages + 3000 non-PDF text files, registry2 global identities.
+- (a) removal 0.973 (57 occurrences left); (b) consistent 0.940, 0 identities with 2+ replacements; (c) 0 shared replacements, 0 pseudonym==original.
+- Private failure list (originals inside, never commit): VM `/data/attempts/attempt-3.pdfeval-failures.tsv` (cols: type, out path, page, original, observed). Re-run: see top of deid/pdfeval.py.
+Concrete fixes, by points at stake:
+1. **Scope (a, 300 pts): 333 out-of-scope edits.** Two causes:
+   - Names changed in PDFs that are NOT in the registry (title-block first names, a person+surname pair, university/city names, institute names). Likely added on the fly by pdftext.rewrite inside workers. Risk: same person stays original in non-PDF files (b) and per-worker salts can differ. Fix: harvest these in the harvest pass into the registry (global), never add names inside rewrite workers.
+   - Real over-redaction: function words (of/and/the/is/a/to) and title-block words (public release/distribution, technical, draughting, express, instrumentation, applied, scientific) changed. Look at grep `scope-change` rows: worst files `.../paper/main.pdf` (16), `.../nasa_std_6016b_...pdf` (12), `sources/catalog/aden_zotakul_ruvi-efaza-fe/.../TOP_COVER.PDF` (7), `.../Doc Guidelines/Bill of Materials v2.pdf` (6), two `ote.ipob.eka/public/.../D1200322-v2_*.PDF` + `D1001838-v6_*.PDF` (5 each).
+2. **Leaks (a):** one component vendor (company, website, sales e-mail, phone) left on 7 pages of `.../component-manuals/Uliredok/*.pdf`; text probably not extractable by search_for (split spans / custom encoding). Also single leaks of university e-mails/hosts and 2 person names.
+3. **No pseudonym written (b, 200 pts): 72 occurrences** removed but replacement missing on the page: one person + their e-mail on 29 pages of `.../CAD/Technical Drawings/Powder/*.PDF` (redacted blank or replacement text not rendered — check font fallback), plus a few institute names.
