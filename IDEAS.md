@@ -18,3 +18,10 @@
 - BUG (attempts 1-2): rw_pdf wrote decoded bytes with /FlateDecode -> corrupt streams/fonts. Fixed + render-warning fallback.
 - Done: PDF page text harvest + redaction replace; OLE in-place mini-stream writes + OLEPS harvest.
 - Next: SolidWorks container; PDF text consistency across PDFs (names split across text spans may be missed by search_for); images/OCR.
+
+## Sat 04:50 ET — after attempt-3 = 397
+Gaps (max-ours): PDF removal 214, PDF consistency 160, non-collision 96, drawing/model 25 (regressed 182->175), OLE saved-account 24, OLE residue 24, leak 15, consistency 11.
+- attempt-4 (submitted): OLE full-stream replacement, wrapped PDF names, license-prose filter.
+- attempt-5 (building): near-label surnames in PDF title blocks (repo-local filter), middle-band redaction (spares neighbour lines), per-line pseudonym slices, OLE field-level author/last-saved-by incl. cp1252 + generic accounts (scope=field).
+- TODO: drawing/model regression — suspect title-block part names/numbers replaced in PDF but not in model (or vice versa). Investigate pairs.
+- TODO: org acronyms (IIT, COSMIIC, NNP) and "RELEASED BY X".
