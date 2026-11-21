@@ -165,6 +165,21 @@ MAIL_PROVIDERS_SLD = {"gmail", "yahoo", "hotmail", "outlook", "live", "icloud", 
                       "facebook", "twitter", "linkedin", "instagram", "googlemail", "mail", "email", "inbox"}
 
 
+SIGNAL_SEGS = set("""io gpio pwr en vcc vdd gnd vss miso mosi sck sclk scl sda cs ss tx rx txd rxd clk rst nrst
+reset osc bga nc dqs dq adc dac pwm int irq usb spi i2c uart jtag tck tms tdi tdo swd swclk swdio led btn
+sw ph pa pb pc pd pe pf pg vin vout vbat vbus mclk lrclk bclk sdin sdout cmd dat d0 d1 d2 d3 a0 a1 a2 a3
+t0 t1 t2 t3 l1p l1n l2p l2n""".split())
+
+
+def _is_signal_name(v: str) -> bool:
+    """Schematic net / FPGA pin names (IO_L9P_T1_DQS_AD3P_15, USB2_PWR_EN) and distributor SKUs."""
+    segs = [x.lower() for x in re.split(r"[-_.]", v) if x]
+    if v.upper().endswith("-ND"):
+        return True
+    return sum(x in SIGNAL_SEGS or re.fullmatch(r"(io|l\d+[pn]|t\d|ad\d+[pn]?|p\d+)", x) is not None
+               for x in segs) >= 2
+
+
 def is_junk(v: str, kind: str, files: int, from_path: bool) -> bool:
     if from_path or kind == "part":  # part numbers were filtered by their own rules
         return False
@@ -228,7 +243,7 @@ def build(candidates_path: str, out_path: str) -> dict:
                 continue
             if row["kind"] == "partno" and mode == "smart" and row["value"] not in pdf_codes:
                 continue
-            if row.get("repos", 0) > 5 or STANDARD_CODE.search(row["value"]):
+            if row.get("repos", 0) > 5 or STANDARD_CODE.search(row["value"]) or _is_signal_name(row["value"]):
                 continue
             row = dict(row, kind="part")
             # identifying part / document numbers: project-local codes only
