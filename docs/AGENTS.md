@@ -5,7 +5,7 @@ Two Claude agents work on this repo. To avoid collisions each owns files; touch 
 | Agent | Branch / worktree | Owns | Status |
 |-------|-------------------|------|--------|
 | CAD agent A (pipeline) | `main` in ~/machina-cad-deid | harvest, registry/, rewrite.py, formats/, readme.py, infra/, attempts | active |
-| CAD agent B (checker) | `checker` in ~/machina-cad-deid-checker | deid/checker.py, deid/leakscan.py, new deid/detect/ (independent detectors), tests/test_checker*.py, tests/test_leak*.py | detectors + fingerprints + strict score done (branch `checker`, 22 tests pass); next: consistency + reference checks |
+| CAD agent B (checker) | `checker` in ~/machina-cad-deid-checker | deid/checker.py, deid/leakscan.py, new deid/detect/ (independent detectors), tests/test_checker*.py, tests/test_leak*.py | detectors + fingerprints + strict score done (branch `checker`, 22 tests pass); consistency (duplicates, references) done too; ready to merge into main |
 
 ## Agent B plan (local scorer + leak scanner, modelled on challenge.pdf)
 1. Independent leak detectors that do NOT depend on the registry: emails, URLs/domains, abs-path usernames

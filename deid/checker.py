@@ -131,6 +131,18 @@ def run(in_root: str, out_root: str, results_json: str, reg: str, secret: bytes,
           f"deid={rates['deid']:.4f} deid_strict={rates['deid_strict']:.4f}  "
           f"LOCAL SCORE={score}  STRICT SCORE={strict}", file=sys.stderr)
     print("independent findings by kind:", ind_tot.most_common(20), file=sys.stderr)
+    from deid import consistency
+
+    dg, dok, dbad = consistency.duplicates(in_root, out_root, mapping, files)
+    rc, rok, rbad = consistency.references(in_root, out_root, mapping, files)
+    rates["dup_consistent"] = dok / dg if dg else 1.0
+    rates["refs_resolved"] = rok / rc if rc else 1.0
+    print(f"duplicate groups: {dok}/{dg} consistent; references: {rok}/{rc} resolve after renames",
+          file=sys.stderr)
+    for x in dbad[:5]:
+        print("  inconsistent duplicates:", x, file=sys.stderr)
+    for x in rbad[:5]:
+        print("  broken reference:", x, file=sys.stderr)
     worst = sorted(by_ext.items(), key=lambda kv: -(kv[1]["n"] - kv[1]["deid"]))[:12]
     for e, c in worst:
         print(f"  {e or '(none)'}: n={c['n']} usable={c['usable']} deid={c['deid']}", file=sys.stderr)
