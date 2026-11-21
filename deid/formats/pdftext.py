@@ -211,8 +211,29 @@ INSTITUTION_RX = re.compile(
 DOTTED_PHONE_RX = re.compile(r"(?<![\d.])(\d{2,3}(?:\.\d{2,3}){3,4})(?![\d.])")
 
 
+PROJECT_LABEL_RX = re.compile(r"(?i)\b(?:project(?:\s*name)?|projekt|projet|proyecto|progetto)\s*[:：]\s*"
+                              r"([A-Z0-9][A-Za-z0-9+&.' -]{2,40}?)(?=\s{2,}|\n|$|\s+(?:date|drawn|scale|sheet|rev))")
+CAMEL_RX = re.compile(r"(?<![A-Za-z0-9])([A-Za-z]*[a-z][A-Z][A-Za-z0-9+]*)(?![A-Za-z0-9])")
+SOFTWARE_CAMEL = set("""solidworks freecad kicad autocad openscad onshape github gitlab youtube labview powerpoint
+iphone ipad macos javascript typescript linkedin facebook wordpress sketchup inventor pcbnew eeschema
+coreldraw photoshop illustrator acrobat adobe microsoft openoffice libreoffice microstation creo
+catia nx siemens fusion autodesk solidedge spaceclaim designspark easyeda altium eagle orcad
+mathworks matlab simulink ansys comsol abaqus paraview blender meshlab cura prusaslicer simplify3d
+""".split())
+
+
 def harvest_text(text: str) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
+    for m in PROJECT_LABEL_RX.finditer(text):
+        v = m.group(1).strip(" .-")
+        if len(v) >= 3 and v.lower() not in TECH_STOP and not v.lower().startswith(("name", "no", "number")):
+            out.append((v, "project_label"))
+    for m in CAMEL_RX.finditer(text):
+        w = m.group(1)
+        lw = w.lower()
+        if 4 <= len(w) <= 24 and len(re.findall(r"[A-Z]", w)) >= 2 and lw not in SOFTWARE_CAMEL \
+                and lw not in _common_words():
+            out.append((w, "project_camel"))
     for m in LIGO_RX.finditer(text):
         out.append((m.group(1), "dwgno"))
     for m in CODECHAIN_RX.finditer(text):
