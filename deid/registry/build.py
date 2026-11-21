@@ -321,6 +321,17 @@ def build(candidates_path: str, out_path: str) -> dict:
             if row.get("repos", 0) > 5 or sur in TECH_STOP or sur in _common_words():
                 continue
             row = dict(row, kind="person")
+        if row["kind"] == "address":
+            # re-validate with the current harvest rules (cheap; no re-harvest needed)
+            from deid.formats.pdftext import address_text
+
+            if (row["value"], "address") not in address_text(row["value"]):
+                continue
+        if row["kind"] == "phone" and row["value"].startswith("00"):
+            from deid.formats.pdftext import INTL00_RX
+
+            if not INTL00_RX.fullmatch(row["value"]):
+                continue
         if row["kind"] == "codefamily":
             # parts-list family codes (no digit required): project-local, not standards / signals /
             # schematic net names (underscores) / dictionary words / licences

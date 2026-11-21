@@ -246,7 +246,7 @@ def _plain_camel(w: str) -> bool:
 _STREET = r"(?:STREET|Street|ST\.|ROAD|Road|RD\.?|AVENUE|Avenue|AVE\.?|DRIVE|Drive|DR\.|LANE|Lane|WAY|Way|BOULEVARD|Boulevard|BLVD\.?|PLACE|Place|CRESCENT|Crescent)"
 ADDRESS_RX = re.compile(rf"(?<![\w.,-])(\d{{1,5}}[A-Za-z]?\s+(?:[A-Z][A-Za-z'-]+\s+){{1,3}}{_STREET}"
                         rf"(?:[ \t]+(?!NEW\b|TEL\b|FAX\b|PHONE\b)[A-Z][A-Z]{{3,20}}\b)?)")
-INTL00_RX = re.compile(r"(?<![\d.])(00[1-9]\d{0,2}[-\s]\d{1,4}[-\s]\d{5,8})(?![\d.])")
+INTL00_RX = re.compile(r"(?<![\d.])(00[1-9]\d{1,2}[-\s]\d{1,4}[-\s]\d{5,8})(?![\d.])")
 COMPANY_UP_RX = re.compile(r"(?<![A-Za-z])((?:[A-Z][A-Z&.-]{1,20}\s+){1,3}(?:DRAUGHTING|DRAFTING|ENGINEERING|DESIGN)"
                            r"\s+(?:SERVICES|LTD\.?|LIMITED|CO\.?))(?![A-Za-z])")
 ADV_LIGO_RX = re.compile(r"\b(Advanced LIGO|ADVANCED LIGO|Advanced Ligo)\b")
