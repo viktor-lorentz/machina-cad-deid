@@ -47,3 +47,11 @@ Gaps (max-ours): PDF removal 214, PDF consistency 160, non-collision 96, drawing
 - Project coinages (AdvLIGO, mesoSPIM, BeBoPr++) with plain-word CamelCase filter (BasePlate, microSD, alloys).
 - GT recall registry7: 61% (70% excl vendor); person 75%.
 - Next gaps: PDF removal 137, PDF consistency 129, triplets 78. Unknown emails (100) + phones (46) in pdfeval -> harvest them.
+
+## Sat 10:10 ET — attempt 6 = 561 (+53)
+- drawing/model 154 -> 164 after removing part numbers from paths. a7: stems only person/account/email/domain/phone.
+- OLE: identity fields 99% rewritten already; but 32% of OLE files kept the same value in OTHER streams
+  (SW Header2, ISolidWorksInformation, Contents/*, Inventor UFRxDoc). a7: per-file field-value mapper over all streams
+  -> residue 11% on a 1200-file sample, sizes unchanged.
+- 39/46 strict-checker "unknown phones" are our own pseudonyms (checker artifact).
+- ~65% of sampled SolidWorks files are 2015+ non-OLE containers: untouched internals (IDEAS: SW container).
