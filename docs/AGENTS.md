@@ -30,3 +30,4 @@ Registry misses found by deid/detect.py (branch `checker`; run with PYTHONPATH=/
 3. **Solid Edge .asm/.par (OLE SummaryInformation)**: Author and LastSavedBy still original names. Harvest OLE metadata (olefile get_metadata) as persons.
 4. Vendor phone numbers in PDF title blocks (few; low priority).
 Next from B: full strict re-check after these land; then merge `checker` into main (no conflicts expected beyond checker.py, already resolved).
+- B (Sat): checker now has PDF page-text check (pdfcheck.py). attempt-2: occ=116 removed=0.000 consistent=0.026 -> matches server 0/500. Queued same check on attempt-3 (registry2) to run when its rewrite ends: /data/attempts/attempt-3.pdfcheck.log. Use it before submitting.
