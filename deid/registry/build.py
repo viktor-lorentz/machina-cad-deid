@@ -206,17 +206,17 @@ def build(candidates_path: str, out_path: str) -> dict:
                 continue
             row = dict(row, kind="person")
         if row["kind"] == "person_init":
-            sur = re.split(r"\.\s?", row["value"])[-1]
-            from deid.formats.pdftext import near_word_ok
+            sur = re.split(r"\.\s?", row["value"])[-1].lower()
+            from deid.formats.pdftext import TECH_STOP, _common_words
 
-            if row.get("repos", 0) > 5 or not near_word_ok(sur):
+            if row.get("repos", 0) > 5 or sur in TECH_STOP or sur in _common_words():
                 continue
             row = dict(row, kind="person")
         if row["kind"] == "codechain":
             # upper-case code chains printed in PDFs: keep project-local ones that recur
-            if row.get("repos", 0) > 3 or row.get("files", 0) < 2 or STANDARD_CODE.search(row["value"]):
+            if row.get("repos", 0) > 2 or STANDARD_CODE.search(row["value"]):
                 continue
-            row = dict(row, kind="partno")
+            row = dict(row, kind="dwgno")
             mode_ok = os.environ.get("DEID_PARTS", "smart") != "none"
             if not mode_ok:
                 continue
@@ -228,6 +228,9 @@ def build(candidates_path: str, out_path: str) -> dict:
                 continue
             if row["kind"] == "partno" and mode == "smart" and row["value"] not in pdf_codes:
                 continue
+            if row.get("repos", 0) > 5 or STANDARD_CODE.search(row["value"]):
+                continue
+            row = dict(row, kind="part")
             # identifying part / document numbers: project-local codes only
             v0 = row["value"]
             if row.get("repos", 0) > 5 or STANDARD_CODE.search(v0) or re.fullmatch(r"(?i)v?\d+([._]\d+)+[a-z]?", v0):

@@ -44,6 +44,16 @@ salvador sam samuel sandra sara sarah sascha scott sean sebastian sebastien séb
 simon simone stefan stefano stephan stephane stéphane stephen steve steven sven takashi thomas thierry tim
 timo timothy tobias todd tom tomas tomás tony torsten uwe valentin vasily victor vincent vladimir walter
 wei werner william wolfgang xavier yann yuki yuri yves zhang
+bernat jordi pere pau oriol marc arnau senthur raj rahul priya arun vijay suresh ramesh ankit amit deepak
+maurice clemens nikita dmitri sergej anatoly yusuf mehmet emre burak murat ahmet fatih kemal hakan
+lars bjorn björn sven nils kristian henrik mikael jukka matti pekka antti teemu ville tuomas
+piet jan joost bram sander ruud wouter maarten jeroen thijs koen niels bas rik
+lukasz łukasz tomasz krzysztof marcin pawel paweł michal michał jakub wojciech marek
+hiroshi takeshi kenji satoshi daisuke yuki haruto sota ren kaito hina yui
+wei jun jie hao yang ming lei feng chao bo xin hui ying ling
+giulia chiara francesca alessandro davide simone federica luigi fabrizio
+gustav ingrid astrid sigrid freya
+
 """.split())
 
 LABELS = (r"drawn(?:\s+by)?|dwn|drn|checked(?:\s+by)?|chk|chkd|approved(?:\s+by)?|appr?|designed(?:\s+by)?|"
