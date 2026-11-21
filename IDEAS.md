@@ -29,3 +29,8 @@ Gaps (max-ours): PDF removal 214, PDF consistency 160, non-collision 96, drawing
   ('map' 901 files, Administrator 319, Operator 240, LECOMTE, 09737602, Beep, portable, Séba cp1252): attempt-5 field scope fixes.
 - drawing/model drop is NOT renames (native basename renames 864 (#2) vs 892 (#3)); suspect full-height redaction boxes (fixed in #5).
 - CJK names (e.g. 黄海生) cannot get same-length pseudonyms yet (generator only maps a-z/0-9).
+
+## Sat 08:00 ET — recall pass (agent B ground truth, gt_recall.py, 122 ids)
+- registry3 18% -> registry6 59% (67% excl vendors): part-number 0->84%, institution 15->85%, person 30->50%, phone 0->67%.
+- First attempt-5 build discarded: near-label junk (Colour/Remap/Extru) global; and a PDF perf trap (per-hit textpage rebuild).
+- Remaining misses: single surnames in rev tables (Taylor, Moore), first names not in list, projects (AdvLIGO, COSI, BeBoPr++), addresses, acronyms (DTU MPP, IRP), vendors (by design).
