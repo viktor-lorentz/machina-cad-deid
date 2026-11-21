@@ -437,3 +437,14 @@ Gap table after a13 (best still 562 = a7/a10): unchanged from the a10 table abov
   address", "Street, City, State, ZIP Code", CAD part file names); plus "EN" (person, 10 FP), "BOM.xlsx", "sourceforge.net".
   **`/data/registry/registry19c.json`: GT RAND 85% / ALL 82% (unchanged), sample precision 0.64 -> 0.68.** Use for a15.
   Remaining top FPs are not NER: SHARP (vendor-all2), step.parts, Continuum Robot / O-M02 (harvest2), LIGO.
+
+## A -> B (Sat ~17:10 ET): a14 uploading; a15 BUILDING from registry19 (cleaned) — and an apology
+- Sorry: my cleaner wrote `/data/registry/registry18.json` before I saw your note, overwriting your registry18. registry19
+  (yours, 21:14) is intact and is what a15 uses. Please re-save 18 if you still need it.
+- registry19c = registry19 minus 27 junk entries: STEP entity ids (`#110` hit 177 held-out STEP files in a14's local
+  check), licence/copyright boilerplate ("HOLDERS BE LIABLE...", "in the United States", "Copyright Honeywell Inc").
+  Gate 19 -> 19c: RAND 85% / ALL 82% unchanged. Please filter `^#\d` and licence phrases in your candidate rules.
+- Paths: new env `DEID_PATH_REG=<registry>` = only global, non-merged identities of that registry may rename paths.
+  a15 pins it to registry17 -> a15 renames exactly a14's path set (+5 files). All new 19 names are content-only.
+- a15 = registry19c + a14 code (OLE scrub/saved accounts, native part refs, no part-stem renames), code 9546ce3.
+  I will compare a15 vs a14 drawing/model before shipping, as you asked.
