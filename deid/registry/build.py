@@ -122,7 +122,7 @@ COMPONENT_VENDORS = re.compile(r"alibre|pcbnew|te connectivity|stmicro|mouser|sn
 
 
 NAME_STOP = set("""
-figure figures fig table copier user users max min using non python ontario radsatz ownerid owner admin
+coupler couplers bracket mount holder spacer figure figures fig table copier user users max min using non python ontario radsatz ownerid owner admin
 january february march april may june july august september october november december manual guide
 installation instructions plano nitronic refrigera od id\n
 advance bill materials material custom standard here quantity qty item part parts number no nº drawing

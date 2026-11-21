@@ -62,6 +62,21 @@ def path_mapper(content: Mapper) -> Mapper:
 
 
 # ---------------------------------------------------------------- paths
+_BM: dict = {}
+
+
+def _basename_mapper(m: Mapper) -> Mapper:
+    bm = _BM.get(id(m))
+    if bm is None:
+        bm = Mapper(secret=m.secret)
+        for k, v in m.entries.items():
+            if m.kinds.get(k) in ("person", "account", "email", "domain", "phone"):
+                bm.entries[k] = v
+                bm.kinds[k] = m.kinds.get(k)
+        _BM[id(m)] = bm
+    return bm
+
+
 def map_path(rel: str, allm: Mapper, content: Mapper, rename: bool) -> str:
     if not rename:
         return rel
@@ -81,7 +96,9 @@ def map_path(rel: str, allm: Mapper, content: Mapper, rename: bool) -> str:
             new = "__".join(allm.pseudonym(b) if b.lower() in allm.entries else b for b in bits) + dot + ext
         if i == len(parts) - 1 and "." in new:
             stem, dot, ext = new.rpartition(".")
-            new = content.replace_text(stem) + dot + ext  # the extension is never renamed
+            # the extension is never renamed; file stems only take person/account/email/domain/phone renames:
+            # native CAD files reference each other by file name inside streams we cannot always rewrite
+            new = _basename_mapper(content).replace_text(stem) + dot + ext
         else:
             new = content.replace_text(new)
         out.append(new)
