@@ -191,6 +191,17 @@ FILE_EXT_RX = re.compile(r"\.(?:sldprt|sldasm|slddrw|step|stp|stl|iges|igs|ipt|i
                          re.I)
 
 
+_ORG_HEAD = re.compile(r"(?i)\b(institute|institut|university|universit[äéy]|laboratory|college|fundaci[óo]n?|"
+                       r"hochschule|politecnico|polytechnic)\b")
+
+
+def _interleaved_org(v: str) -> bool:
+    """Two-column title blocks interleave lines: 'Institute of Technology Massachusetts Institute'."""
+    toks = v.split()
+    return len(_ORG_HEAD.findall(v)) > 1 or (toks and toks[0].lower() in
+                                               {"technology", "engineering", "science", "sciences", "of", "and"})
+
+
 def is_junk(v: str, kind: str, files: int, from_path: bool) -> bool:
     if from_path or kind == "part":  # part numbers were filtered by their own rules
         return False
@@ -237,6 +248,8 @@ def build(candidates_path: str, out_path: str) -> dict:
             if row.get("repos", 0) > 5:
                 continue
             row = dict(row, kind="project")
+        if row["kind"] == "company" and _interleaved_org(row["value"]):
+            continue
         if row["kind"] == "person_init":
             sur = re.split(r"\.\s?", row["value"])[-1].lower()
             from deid.formats.pdftext import TECH_STOP, _common_words
