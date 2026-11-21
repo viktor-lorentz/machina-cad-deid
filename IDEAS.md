@@ -73,3 +73,12 @@ Gaps (max-ours): PDF removal 214, PDF consistency 160, non-collision 96, drawing
 - attempt 8 = a7 + swx + SW docProps harvest. Caught twice before shipping: junk field values ("-.01", dates, NA)
   and per-file propagation of "Author"/"Owner"/"ISO 2768" (would rename XML property names). Now: field_ok +
   propagation only for person/account values, PROP_WORDS excluded.
+
+## Sat 12:30 ET — a8 553, a9 519 (best still a7 562)
+- SW2015 rewrite: no category gained; packaging 5->2 (scope? padded/recompressed sections). OFF.
+- keep-file-codes: drawing/model +3, PDF consistency -20, triplets -8. REJECTED. Part-number replacement is worth a lot
+  in the PDF categories; the drawing/model gap is something else (maybe paired drawing/model metadata, not names).
+- free "First Last" rule (registry12): GT recall unchanged (names already caught), adds Robert Bosch / Alfred Gessow
+  Rotorcraft -> not shipped.
+- code/ quoted corpus strings (tests, IDEAS, docs/AGENTS.md). Now dropped from code/; source stays exact.
+- attempt 10 = registry10 (a7) + swx off + restricted propagation + clean code/: tests packaging 2 -> >=5.
