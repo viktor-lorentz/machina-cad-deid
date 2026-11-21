@@ -340,7 +340,12 @@ def rw_ole(data: bytes, m: Mapper) -> bytes:
         # >=5 bytes does not occur by chance in binary data
         return m.replace_bytes(body, ("ascii", "utf-16-le"), accept=lambda src, a, b: b - a >= 5)
 
-    return ole_inplace.rewrite(data, transform)
+    out = ole_inplace.rewrite(data, transform)
+    if G.get("ole_scrub_free", True):
+        from deid.formats import olefree
+
+        out = olefree.scrub(out)
+    return out
 
 
 PROP_WORDS = {"author", "owner", "user", "users", "title", "subject", "company", "manager", "description",
