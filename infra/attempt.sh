@@ -7,7 +7,7 @@ N="$1"; shift
 FLAGS="$*"
 CODE=/data/code
 OUT=/data/attempts/attempt-$N
-REG=/data/registry/registry.json
+REG=${REG:-/data/registry/registry.json}
 PY=$CODE/.venv/bin/python
 export PYTHONUNBUFFERED=1
 cd "$CODE"
