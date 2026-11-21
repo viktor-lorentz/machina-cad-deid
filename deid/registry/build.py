@@ -354,6 +354,10 @@ def build(candidates_path: str, out_path: str) -> dict:
             row = dict(row, kind="part")
         field_kind = None
         if row["kind"].endswith("_field"):
+            from deid.formats.swx import field_ok
+
+            if not field_ok(row["value"]):
+                continue
             # explicit identity field (OLE author / last saved by): always pseudonymised in
             # that field, even when the value is a generic or common word
             field_kind = row["kind"][:-6]

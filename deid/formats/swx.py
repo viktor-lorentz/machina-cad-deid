@@ -58,13 +58,17 @@ def records(data: bytes):
     return out
 
 
-def _deflate(b: bytes) -> bytes:
+def _deflate(b: bytes, limit: int | None = None) -> bytes:
+    """Smallest raw-deflate stream over levels and strategies (stop early once it fits)."""
     best = None
-    for level in (9, 6):
-        c = zlib.compressobj(level, zlib.DEFLATED, -15, 9)
-        s = c.compress(b) + c.flush()
-        if best is None or len(s) < len(best):
-            best = s
+    for strategy in (zlib.Z_DEFAULT_STRATEGY, zlib.Z_FILTERED, zlib.Z_FIXED, zlib.Z_RLE, zlib.Z_HUFFMAN_ONLY):
+        for level in (9, 6, 1, 4, 8):
+            c = zlib.compressobj(level, zlib.DEFLATED, -15, 9, strategy)
+            s = c.compress(b) + c.flush()
+            if best is None or len(s) < len(best):
+                best = s
+            if limit is not None and len(best) <= limit and strategy == zlib.Z_DEFAULT_STRATEGY and level == 9:
+                return best
     return best
 
 
@@ -80,7 +84,7 @@ def rewrite(data: bytes, transform) -> bytes:
         new = transform(name, payload)
         if new == payload or len(new) != len(payload):
             continue
-        comp = _deflate(new)
+        comp = _deflate(new, cs)
         if len(comp) > cs:
             continue
         if buf is None:
@@ -103,6 +107,16 @@ PROP_RX = re.compile(rb'<property[^>]*name="([^"]{1,60})"[^>]*>\s*<vt:lpwstr>([^
 PEOPLE_PROP = re.compile(r"(?i)author|drawn|designer|engineer|checked|approved|created ?by|owner|zeichner|"
                          r"gezeichnet|gepr|bearbeiter|dessin|responsable|dibuj|revis")
 COMPANY_PROP = re.compile(r"(?i)company|firma|client|customer|vendor|supplier|soci[eé]t[eé]|empresa")
+
+
+_PLACEHOLDER = {"any", "na", "n/a", "none", "tbd", "xx", "xxx", "name", "user", "nobody", "unknown", "-"}
+
+
+def field_ok(v: str) -> bool:
+    """Identity-field values must look like a name/account: >=3 chars, >=2 letters, not a date/number/placeholder."""
+    v = v.strip()
+    return (len(v) >= 3 and len(re.findall(r"[^\W\d_]", v)) >= 2 and v.lower() not in _PLACEHOLDER
+            and not v.startswith(("$", "\"", "=")))
 
 
 def harvest(data: bytes) -> list[tuple[str, str]]:
@@ -132,4 +146,4 @@ def harvest(data: bytes) -> list[tuple[str, str]]:
             elif pname in ("SW-Folder Name",):
                 for u in re.findall(r"(?i)\\(?:users|documents and settings)\\([^\\]{2,40})\\", val):
                     out.append((u, "account"))
-    return out
+    return [(v, k) for v, k in out if field_ok(v)]
