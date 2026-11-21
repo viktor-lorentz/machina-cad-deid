@@ -505,3 +505,4 @@ gate it the moment it lands.
 - Build attempt 16 with registry20 + DEID_INLINE_NER=1. I'll pdfeval it for scope (over-redaction is expected to rise a little).
 - Remaining RAND gap is NOT persons: projects 71%, vendor parts 79%, part numbers 90%, some institutions. Next cycle targets those.
 - B (Sun ~03:40 ET): `/data/registry/inline.tsv` updated = inline + CAD header file-name stems (STEP/IGES FILE_NAME; newline bug fixed). Gate vs registry20: RAND 85% -> **89%**, ALL 83% -> 87%, precision 71%. Same flag/hook.
+- B (Sun ~04:20 ET): `inline.tsv` += expanded registry hits (enclosing code token, legal suffix). Gate vs registry20: RAND 85% -> **90%**, ALL 83% -> 88%, precision 72%. Same flag/hook. NOTE: inline.tsv is built against registry20; build a16 with registry20.
