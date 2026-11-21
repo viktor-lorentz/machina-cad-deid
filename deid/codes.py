@@ -31,7 +31,7 @@ EXCL = [re.compile(x, re.I) for x in (
     r"^\d+[a-z]?$",  # plain numbers handled separately (need a label right before)
 )]
 NUMLABEL = re.compile(r"(?i)(?:part\s*(?:no|number|#)|p/n|article\s*(?:no|number)|art\.?\s*-?\s*nr|ref|order\s*(?:no|code)|item|réf|"
-                      r"supplier\s*(?:no|number)|r[ée]f|mpn|sku|dwg\.?\s*no|doc(?:ument)?\.?\s*no)\s*[:.#]?\s*(\d{6,14})\b")
+                      r"supplier\s*(?:no|number)|r[ée]f|mpn|sku|dwg\.?\s*no|doc(?:ument)?\.?\s*(?:no|id))\s*[:.#]?\s*(\d{6,14})\b")
 STEPPROD = re.compile(r"PRODUCT\s*\(\s*'([^']{3,60})'\s*,\s*'([^']{0,60})'")
 HOST = re.compile(r"(?<![A-Za-z0-9\-\.@])((?:[a-z0-9](?:[a-z0-9\-]{0,40}[a-z0-9])?\.)+(?:com|org|net|edu|gov|io|co|de|uk|nz|au|ch|fr|it|es|nl|"
                   r"be|at|se|no|dk|fi|pl|cz|hu|jp|cn|kr|in|br|mx|ca|us|eu|ws|info|biz|tech|dev|app|ai|me|tv|cc|xyz|ru|pt|gr|ro|il|tw|sg|hk|za|ar|cl)"
@@ -207,7 +207,59 @@ def select(stats, out, max_repos=3):
 
 
 if __name__ == "__main__":
-    if sys.argv[1:2] == ["select"]:
+    if sys.argv[1:2] == ["stems"]:
+        stems_main(sys.argv[2], sys.argv[3])
+    elif sys.argv[1:2] == ["select"]:
         print("selected", select(sys.argv[2], sys.argv[3], int(sys.argv[4]) if len(sys.argv) > 4 else 3))
     else:
         main(sys.argv[1:])
+
+
+# ---- CAD header file-name stems (content identities only; never used for renames) --------------------------------
+STEPNAME = re.compile(r"FILE_NAME\s*\(\s*(?:/\*[^*]*\*/\s*)?'([^']{3,260})'", re.S)
+IGESNAME = re.compile(r"\d+H([^,;]{3,120}?\.(?:igs|iges))", re.I)
+GENSTEM = re.compile(r"(?i)^(?:open cascade.*|untitled.*|unnamed.*|part\d*|assembly\d*|assy\d*|body\d*|model\d*|default|none|noname|"
+                     r"drawing\d*|sketch\d*|component\d*|new.*|copy.*|test.*|sample.*|example.*|step|stp|iges)$")
+
+
+def stem_of(name):
+    b = re.split(r"[\\/]", name.strip())[-1]
+    b = re.sub(r"(?i)(?:\.(?:prt|asm|sldprt|sldasm|ipt|iam|par|catpart|catproduct|x_t|sat|stp|step|igs|iges|hh))+$", "", b).strip()
+    return b
+
+
+def stemish(s):
+    if len(s) < 6 or len(s) > 60 or GENSTEM.match(s) or " " in s.strip() and not re.search(r"\d", s):
+        return False
+    return bool(re.search(r"[-_]", s) and re.search(r"[A-Za-z]{2}", s)) and (bool(re.search(r"\d", s)) or s.count("-") + s.count("_") >= 2)
+
+
+def scan_header(path):
+    try:
+        with open(path, "rb") as fh:
+            h = fh.read(8000).decode("utf-8", "ignore")
+    except OSError:
+        return []
+    out = []
+    for rx in (STEPNAME, IGESNAME):
+        for m in rx.finditer(h):
+            s = stem_of(m.group(1))
+            if stemish(s):
+                out.append(s)
+    return out
+
+
+def stems_main(root, out, j=28):
+    paths = [os.path.join(d, f) for d, _, fs in os.walk(root) for f in fs if f.lower().endswith((".step", ".stp", ".igs", ".iges"))]
+    cnt, reps = Counter(), defaultdict(set)
+    with Pool(j) as pool:
+        for p, vs in zip(paths, pool.imap(scan_header, paths, chunksize=64)):
+            for v in vs:
+                cnt[v] += 1
+                reps[v].add(repo_of(p, root))
+    n = 0
+    with open(out, "w") as fh:
+        for v, c in cnt.most_common():
+            if len(reps[v]) <= 2 and v.isascii():
+                fh.write(f"part\t{v}\n"); n += 1
+    print(f"header files {len(paths)} stems {len(cnt)} kept {n}")
