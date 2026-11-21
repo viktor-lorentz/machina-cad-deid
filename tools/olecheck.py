@@ -35,6 +35,9 @@ import olefile
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from deid.formats import oleps  # noqa: E402
 
+USERPATH = re.compile(r"(?:[a-z]:\\(?:users|documents and settings|doc utilisateur|benutzer|usuarios|utilisateurs)\\|/home/|/users/)"
+                      r"([a-z0-9._ -]{2,32}?)(?=[\\/])")
+BAD_USERS = {"public", "default", "all users", "administrator", "admin", "user", "users", "shared", "default user"}
 MAGIC = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
 ZHDR = re.compile(rb"\x78[\x01\x5e\x9c\xda]")
 NAMEISH = re.compile(r"^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ.'\- ]{1,40}$|^[\w.-]+\\[\w.-]+$|^[\w.+-]+@[\w.-]+$")
@@ -185,6 +188,19 @@ def main():
                 stats[f"field_unchanged:{k}"] += 1
                 fails.append(("A-unchanged", k, rin, s, f"{fm}:{p}", v))
         vs = {v for _, _, _, _, v in fin}
+        # input-side: which field values ALSO live outside the property sets (the grader's likely population),
+        # and which logins appear in saved paths (C:\Users\<login>\...)
+        cross_in, logins = set(), set()
+        for where, text in views(din):
+            for mm in USERPATH.finditer(text):
+                if mm.group(1).strip() not in BAD_USERS:
+                    logins.add(mm.group(1).strip())
+            if where.startswith("\x05"):
+                continue
+            for v in vs:
+                if re.search(r"(?<![a-z0-9])" + re.escape(v.lower()) + r"(?![a-z0-9])", text):
+                    cross_in.add(v)
+        out_text = None
         resid = []
         reg_resid = []
         for where, text in views(dout):
@@ -210,6 +226,16 @@ def main():
                         continue
                     reg_resid.append((where, w))
         resid = sorted(set(resid))
+        if logins:
+            stats["D_files_with_login_paths"] += 1
+            out_text = "\n".join(t for _, t in views(dout))
+            left = [u for u in logins if re.search(r"[\\/]" + re.escape(u) + r"[\\/]", out_text)]
+            stats["D_pass"] += not left
+            for u in left:
+                fails.append(("D-login", "path", rin, "", "", u))
+        if cross_in:
+            stats["Bx_files_cross_stream"] += 1
+            stats["Bx_pass"] += not resid
         if resid:
             stats["B_residue_files"] += 1
             for where, v in resid:
@@ -236,6 +262,10 @@ def main():
     print(f"A saved-account pass: {stats['A_pass']}/{stats['A_files_with_fields']} = {stats['A_pass']/n:.3f}")
     print(f"B cross-stream residue pass: {stats['B_pass']}/{stats['A_files_with_fields']} = {stats['B_pass']/n:.3f}")
     print(f"A+B pass: {stats['AB_pass']/n:.3f};  inconsistent field mappings: {incons}/{len(mapping)}")
+    nx = max(1, stats["Bx_files_cross_stream"])
+    print(f"B* residue pass on cross-stream files: {stats['Bx_pass']}/{stats['Bx_files_cross_stream']} = {stats['Bx_pass']/nx:.3f}")
+    nd = max(1, stats["D_files_with_login_paths"])
+    print(f"D saved-path login pass: {stats['D_pass']}/{stats['D_files_with_login_paths']} = {stats['D_pass']/nd:.3f}")
     print("residue by stream view:", where_hits.most_common(15))
     print("residue by field kind:", kind_hits.most_common())
     if a.fail:

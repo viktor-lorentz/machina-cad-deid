@@ -252,6 +252,29 @@ COMPANY_UP_RX = re.compile(r"(?<![A-Za-z])((?:[A-Z][A-Z&.-]{1,20}\s+){1,3}(?:DRA
 ADV_LIGO_RX = re.compile(r"\b(Advanced LIGO|ADVANCED LIGO|Advanced Ligo)\b")
 
 
+SHORT_SERIES_RX = re.compile(r"(?<![A-Za-z0-9_.-])([A-Z]{2,3})-(\d{2,3})(?![A-Za-z0-9_-])")
+INITIALS_LABEL_RX = re.compile(r"(?:DRAWN|DRN|DRAWN BY|CHECKED|CHK'?D|CHECKED BY|APPROVED|APPV'?D|APP'?D|DESIGNED|DESIGNED BY|"
+                               r"DESIGNER|ENG|ENGINEER|DWN|DRW|BY)\s*[:.]?\s+([A-Z]{3})(?![A-Za-z])")
+DE_POSTCODE_RX = re.compile(r"(?<![\d.,-])(\d{5}\s+[A-ZÄÖÜ][a-zäöüß]{3,20}(?:-[A-ZÄÖÜ][a-zäöüß]+)?)(?![\w])")
+LEGAL_LOWER_RX = re.compile(r"((?:[A-Z][\w&'-]+[ \t]+){1,4}(?:spol\.[ \t]+)?(?:s\.r\.o\.|s\.r\.l\.|S\.r\.l\.|sp\.[ \t]?z[ \t]?o\.o\.|"
+                            r"Co\.,?[ \t]?Ltd\.?|Oy|A/S|B\.V\.|GmbH(?:[ \t]&[ \t]Co\.[ \t]KG)?))(?![\w])")
+LAB_RX = re.compile(r"\b(LIGO (?:LABORATORY|Laboratory|Lab))\b")
+_NOT_INITIALS = {"THE", "AND", "FOR", "MFG", "QTY", "REV", "DWG", "N/A", "TBD", "ALL", "SEE", "PER", "MAT", "DIA", "TYP",
+                 "REF", "DATE", "NAME", "ISO", "DIN", "ANSI", "ASME", "CAD", "PDF", "STP", "MAX", "MIN", "NOM", "BOM"}
+
+
+def series_text(text: str) -> list[tuple[str, str]]:
+    """Short project part series in one document: XX-101 ... XX-109 (>=4 distinct numbers, same prefix)."""
+    nums: dict[str, set] = {}
+    for m in SHORT_SERIES_RX.finditer(text):
+        nums.setdefault(m.group(1), set()).add(m.group(2))
+    out = []
+    for pre, ns in nums.items():
+        if len(ns) >= 4 and pre not in _NOT_INITIALS:
+            out += [(f"{pre}-{n}", "codefamily") for n in ns]
+    return out
+
+
 def address_text(text: str) -> list[tuple[str, str]]:
     out = []
     for m in ADDRESS_RX.finditer(text):
@@ -262,6 +285,21 @@ def address_text(text: str) -> list[tuple[str, str]]:
                     and w.lower() not in ("allen", "extruder") for w in words):
             out.append((m.group(1), "address"))
     out += [(m.group(1), "phone") for m in INTL00_RX.finditer(text)]
+    for m in DE_POSTCODE_RX.finditer(text):
+        city = m.group(1).split()[-1]
+        cl = city.lower()
+        if cl not in _common_words() and cl.rstrip("s") not in _common_words() and cl not in TECH_STOP:
+            out.append((re.sub(r"\s+", " ", m.group(1)), "address"))
+    for m in INITIALS_LABEL_RX.finditer(text):
+        if m.group(1) not in _NOT_INITIALS and m.group(1).lower() not in _common_words():
+            out.append((m.group(1), "person_initials"))
+    for m in LEGAL_LOWER_RX.finditer(text):
+        ws = re.sub(r"\s+", " ", m.group(1)).split(" ")
+        while ws and (ws[0].lower() in _common_words() or ws[0].lower() in STOPWORDS or ws[0].lower() in TECH_STOP):
+            ws.pop(0)
+        if len(ws) >= 2:
+            out.append((" ".join(ws), "company"))
+    out += [(m.group(1), "institution") for m in LAB_RX.finditer(text)]
     for m in COMPANY_UP_RX.finditer(text):
         ws = re.sub(r"\s+", " ", m.group(1)).split(" ")
         while ws and (ws[0].lower() in _common_words() or ws[0].lower() in TECH_STOP or ws[0].lower() in STOPWORDS):
@@ -419,6 +457,7 @@ def harvest(data: bytes, max_pages: int = 6, stem: str = "") -> list[tuple[str, 
             out += harvest_text(t)
             out += family_codes(t)
             out += address_text(t)
+            out += series_text(t)
             if stem:
                 out += stem_codes(stem, re.sub(r"\s+", " ", t))
     except Exception:

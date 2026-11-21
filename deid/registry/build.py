@@ -321,6 +321,11 @@ def build(candidates_path: str, out_path: str) -> dict:
             if row.get("repos", 0) > 5 or sur in TECH_STOP or sur in _common_words():
                 continue
             row = dict(row, kind="person")
+        if row["kind"] == "person_initials":
+            # 3-letter initials after DRAWN/CHECKED/APPROVED labels: project-local, seen in >=2 files
+            if row.get("repos", 0) > 2 or row.get("files", 0) < 2:
+                continue
+            row = dict(row, kind="person")
         if row["kind"] == "address":
             # re-validate with the current harvest rules (cheap; no re-harvest needed)
             from deid.formats.pdftext import address_text

@@ -302,11 +302,25 @@ def rw_ole(data: bytes, m: Mapper) -> bytes:
     / company strings: full replacement. Other streams: only matches inside long
     plain-string runs, so compressed or binary payloads are never touched.
     """
-    from deid.formats import ole_inplace
+    from deid.formats import ole_inplace, olezlib
 
     local = _ole_field_mapper(data)
 
+    def _plain(body: bytes, short: bool = False) -> bytes:
+        body = m.replace_bytes(body, ("ascii", "utf-16-le"), accept=lambda src, a, b: b - a >= 5)
+        if local is not None:
+            # 3-letter own account values ("Rob") only in text (XML members, ISolidWorksInformation)
+            n = 3 if short or body[:1] == b"<" or body[:4] == b"\xef\xbb\xbf<" else 4
+            body = local.replace_bytes(body, ("utf-16-le", "ascii"), accept=lambda src, a, b: b - a >= n)
+        return body
+
     def transform(name: str, body: bytes) -> bytes:
+        # zlib members (SW *__ZLB / Config-N-*, Inventor RSeStorage/B*): rewrite the INFLATED content and re-deflate
+        # to the exact original size (agent C, deid/formats/olezlib.py); never byte-replace compressed data
+        if not name.startswith("\x05") and olezlib.members(body):
+            return olezlib.patch(body, _plain)
+        if name == "ISolidWorksInformation":
+            return _plain(body, short=True)
         body = _transform_main(name, body)
         if local is not None and not name.startswith("\x05"):
             # the file's own author / last-saved-by values also live in Header2, ISolidWorksInformation,
