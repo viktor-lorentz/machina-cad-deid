@@ -284,3 +284,69 @@ def expand(reg, root, out, j=28):
 if __name__ == "__main__" and sys.argv[1:2] == ["expand"]:
     a = sys.argv[1:]
     expand(a[1], a[2], a[3], int(a[a.index("-j") + 1]) if "-j" in a else 28)
+
+
+# ---- repophrases: repo-name word sequences found in the repo's own text ------------------------------------------
+#   python -m deid.inline repophrases INPUT_DIR OUT.tsv [-j 28]
+SPLIT = re.compile(r"[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z]+|[A-Z]+|\d+")
+REPO_GENERIC = set("""master main hw sw v1 v2 v3 v4 v5 design designs files file cad step stl pdf docs doc src project projects open source
+hardware github gitlab extracted original fabrication the and of for a an with""".split())
+
+
+def repo_key(path, root):
+    rel = os.path.relpath(path, root).split(os.sep)
+    return "/".join(rel[:3]) if rel[0] == "sources" and len(rel) > 3 else "/".join(rel[:2])
+
+
+def repo_regex(name):
+    name = name.split("__")[-1]
+    toks = SPLIT.findall(name)
+    pats = set()
+    for i in range(len(toks)):
+        for j in range(i + 2, min(len(toks), i + 6) + 1):
+            g = toks[i:j]
+            if g[0].isdigit() or g[-1].lower() in REPO_GENERIC or g[0].lower() in REPO_GENERIC:
+                continue
+            if sum(len(x) for x in g) < 7 or all(x.lower() in REPO_GENERIC for x in g):
+                continue
+            pats.add(r"[\s_\-]?".join(re.escape(x) for x in g))
+    if not pats:
+        return None
+    return re.compile(r"(?<![A-Za-z0-9])(?:" + "|".join(sorted(pats, key=len, reverse=True)) + r")(?![a-z])", re.I)
+
+
+def repo_scan(item):
+    repo, paths = item
+    rx = repo_regex(repo.split("/")[-1])
+    out = set()
+    if rx is None:
+        return out
+    for p in paths[:400]:
+        for t in _texts(p):
+            for m in rx.finditer(t):
+                v = re.sub(r"\s+", " ", m.group(0)).strip()
+                if len(v) >= 7:
+                    out.add(("project", v))
+    return out
+
+
+def repophrases(root, out, j=28):
+    by = {}
+    for d, _, fs in os.walk(root):
+        for f in fs:
+            if f.lower().endswith((".pdf", ".txt", ".md")):
+                p = os.path.join(d, f)
+                by.setdefault(repo_key(p, root), []).append(p)
+    vals = set()
+    with Pool(j) as pool:
+        for s in pool.imap_unordered(repo_scan, sorted(by.items(), key=lambda kv: -len(kv[1])), chunksize=1):
+            vals |= s
+    with open(out, "w") as fh:
+        for k, v in sorted(vals, key=lambda x: x[1]):
+            fh.write(f"{k}\t{v}\n")
+    print(f"repos {len(by)} phrases {len(vals)}")
+
+
+if __name__ == "__main__" and sys.argv[1:2] == ["repophrases"]:
+    a = sys.argv[1:]
+    repophrases(a[1], a[2], int(a[a.index("-j") + 1]) if "-j" in a else 28)
