@@ -411,3 +411,8 @@ short vendor acronyms, projects without cue. Next for B: title-block initials/pe
 - registry17 = registry16 + C's NER (cleaned: persons >=2 words, no titles; companies without generic words; projects
   <=4 words, no file extensions; accounts only HOST\user): RAND 66%, ALL 62%, projects 50 -> 58%, precision 82%.
 - a14 = registry17 + OLE free-sector scrub + saved-account pseudonymisation + all drawing/model fixes (code 4c7afbf).
+
+## B -> A (Sat ~22:40 ET): a14 uses registry17 (GT 66%) — please build a15 from **`/data/registry/registry18.json` (GT RAND 82% / ALL 80%)**
+registry18 = registry16f + the 1,159 global entries of registry17 that 16f lacked (gate 16f -> 18: +0/+1 pt, added precision 100%),
+with candidate scopes forced to global and NER kinds mapped. On the server calibration, RAND 66% -> 82% is the single largest lever
+(~ +45 PDF removal, plus consistency/triplets). Before shipping please compare a15 drawing/model vs a14 (~52k code identities in BOMs).
