@@ -257,7 +257,18 @@ def rw_ole(data: bytes, m: Mapper) -> bytes:
     """
     from deid.formats import ole_inplace
 
+    local = _ole_field_mapper(data)
+
     def transform(name: str, body: bytes) -> bytes:
+        body = _transform_main(name, body)
+        if local is not None and not name.startswith("\x05"):
+            # the file's own author / last-saved-by values also live in Header2, ISolidWorksInformation,
+            # Contents/*, UFRxDoc ...: replace them there with the same pseudonym (word-bounded)
+            body = local.replace_bytes(body, ("utf-16-le", "ascii"),
+                                       accept=lambda src, a, b: b - a >= 4)
+        return body
+
+    def _transform_main(name: str, body: bytes) -> bytes:
         if name.startswith("\x05"):
             from deid.formats import oleps
 
@@ -269,6 +280,38 @@ def rw_ole(data: bytes, m: Mapper) -> bytes:
         return m.replace_bytes(body, ("ascii", "utf-16-le"), accept=lambda src, a, b: b - a >= 5)
 
     return ole_inplace.rewrite(data, transform)
+
+
+def _ole_field_mapper(data: bytes):
+    """Mapper holding only this file's identity-field values (author, last saved by, ...),
+    with the corpus-wide pseudonyms from the full registry."""
+    import io
+
+    import olefile
+
+    from deid.formats import oleps
+    from deid.registry.pseudonym import norm
+
+    allm = G.get("allm")
+    if allm is None:
+        return None
+    try:
+        ole = olefile.OleFileIO(io.BytesIO(data))
+    except Exception:
+        return None
+    lm = Mapper(secret=allm.secret)
+    try:
+        for e in ole.listdir(streams=True, storages=False):
+            if not e[-1].startswith("\x05"):
+                continue
+            for fmtid, pid, v in oleps.parse(ole.openstream(e).read()):
+                k = norm(v)
+                if oleps._kind(fmtid, pid) and len(v) >= 3 and k in allm.entries:
+                    lm.entries[k] = allm.entries[k]
+                    lm.kinds[k] = allm.kinds.get(k, "account")
+    finally:
+        ole.close()
+    return lm if lm.entries else None
 
 
 def _guarded(body: bytes, m: Mapper) -> bytes:
