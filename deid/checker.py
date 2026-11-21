@@ -5,9 +5,10 @@ repositories (hash bucket 0 of 5, never used for tuning). Three families:
 
 * found:  every input file has exactly one output with the same extension
           and the same directory depth;
-* usable: the output still parses like its input (STEP sections, PDF page
-          count, zip member count + CRC, OLE stream list, STL size/facets,
-          IGES section letters, DXF section count);
+* usable: geometry-preserving fingerprint equal to the input's
+          (deid/fingerprint.py: STEP DATA with strings masked, STL triangles,
+          OBJ v/f, IGES D+P with Hollerith masked, DXF non-text groups, PDF
+          pages+boxes, OLE stream sizes, zip members recursively);
 * deid:   no global registry identity remains in the output path, raw
           bytes (ASCII/UTF-16LE), zip members or decoded PDF streams.
 
@@ -28,6 +29,7 @@ from multiprocessing import Pool
 from pathlib import Path
 
 from deid.harvest import ext_of, list_files
+from deid.fingerprint import fingerprint
 from deid.leakscan import _init as leak_init, scan_file
 
 G: dict = {}
@@ -82,11 +84,11 @@ def check_one(args):
     try:
         a, b = open(src, "rb").read(), open(dst, "rb").read()
         try:
-            sa = _structure(a, res["ext"])
+            sa = fingerprint(a, res["ext"])
         except Exception:
             sa = ("invalid-input",)
         try:
-            sb = _structure(b, res["ext"])
+            sb = fingerprint(b, res["ext"])
         except Exception:
             sb = ("invalid-output",)
         res["usable"] = int(sa == sb or sa == ("invalid-input",))
