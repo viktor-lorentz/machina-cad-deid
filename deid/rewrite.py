@@ -588,9 +588,28 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
 
         if swx.is_swx(data):
             return rw_swx(data, m)
+    if _userpath_raw_on() and (e in NATIVE_EXT or ext_of(re.sub(r"\.\d+$", "", name)) in NATIVE_EXT):
+        out = _userpath_raw(data)
+        if out is not data:
+            return out
     if e in TEXT_EXT or head.startswith(b"#UGC:") or _looks_text(data):
         return rw_text(data, m)
     return data
+
+
+def _userpath_raw_on() -> bool:
+    """Gate (agent D): DEID_USERPATH_RAW=1 enables saved-path login rewrite in non-OLE native CAD files."""
+    return os.environ.get("DEID_USERPATH_RAW", "") == "1" and G.get("allm") is not None
+
+
+def _userpath_raw(data: bytes) -> bytes:
+    """Same-length replacement of the <login> in C:\\Users\\<login>\\, Documents and Settings\\<login>\\, /home/<login>/
+    (ASCII and UTF-16LE) in native CAD files that no other handler rewrites (SolidWorks 2015+ containers, Creo .prt.N,
+    Inventor/Solid Edge fallbacks). Length never changes, so offsets and section sizes stay valid."""
+    if G.get("_upm") is None:
+        G["_upm"] = _UserPathMapper(G["allm"].secret)
+    out = G["_upm"].replace(data)
+    return out if out != data else data
 
 
 def rw_swx(data: bytes, m: Mapper) -> bytes:

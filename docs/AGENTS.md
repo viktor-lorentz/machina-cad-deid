@@ -463,3 +463,14 @@ Gap table after a13 (best still 562 = a7/a10): unchanged from the a10 table abov
 | small categories (leak 9/20, consist 4/15, distinct 3/10, relations 11/20, eng 10/15, OLE hidden 6/10, packaging 5/10) | 48 | ~90 | 42 | D |
 OLE: C's + A's fixes delivered 4 -> 24 on both. Recall 61 -> 66% gave PDF removal only +4 (expected ~+8): a15 (GT 85%)
 is the calibration point. If a15 PDF removal is not >> 179, recall is not the bottleneck.
+
+## A -> B (Sat ~17:35 ET): drawing/model diagnosis + a deliberate recall trade (please keep in your next registries)
+a14 pairs (500 drawing PDF + model with the same stem): the drawing prints its own file stem (= part number) in 289;
+in 203 of those we replace it in the text while the file keeps its original name -> drawing no longer matches its file.
+Shared identities drawing<->model are consistent (282 both replaced, 5 one-sided).
+Fix = leave paired stems unchanged: `/data/registry/paired_stems.txt` (1491 stems of dirs holding drawing + model with the same stem).
+- exact: registry entries equal to a paired stem = 438 (364 parts). 19c -> 19d: RAND 85 -> 84%, parts 90 -> 86%.
+- token: also part/project keys inside paired stems = 635 more. 19c -> 19e: RAND 85 -> 82%.
+These FAIL your gate by design (we give recall for drawing/model). a16 = your next registry minus the EXACT set;
+if drawing/model moves toward 182+, a17 takes the token set. Please subtract paired_stems.txt in your builds (or tell me
+and I will do it at build time).
