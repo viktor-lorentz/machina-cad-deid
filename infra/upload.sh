@@ -12,6 +12,6 @@ DEST="gs://builders-machina-submissions-1120/teams/$TEAM/attempt-$N/"
 export MACHINA_UPLOAD_TOKEN="$(cat /data/secrets/token)"
 T0=$(date +%s)
 python3 /data/upload.py --dest "$DEST" --corpus "$SRC/corpus" --code "$SRC/code" --readme "$SRC/README.txt" \
-  --token-file /data/secrets/token
+  --token-file /data/secrets/token --workers 64
 T1=$(date +%s)
 echo "UPLOAD DONE attempt-$N from $SRC in $((T1-T0))s -> $DEST"
