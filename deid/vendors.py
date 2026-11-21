@@ -77,7 +77,7 @@ Elegoo|ELEGOO|Mean Well|MEAN WELL|Meanwell|Lumberg|Harting|HARTING|Amphenol|Weid
 Nanotec|Trinamic|TRINAMIC|Item Industrietechnik|Robert Bosch|Bosch Rexroth|Norelem|norelem|Ganter|Fastenal|Grainger|RS Components|Farnell|
 Newark|LCSC|Tektronix|Keysight|Rohde & Schwarz|Fluke|Vernier|OpenBuilds|ServoCity|Actobotics|goBILDA|GoBilda|REV Robotics|LulzBot|Lulzbot|
 Prusa|Creality|Ultimaker|Bondtech|Thomson Linear|Misumi USA|Accu|Automation Direct|AutomationDirect|Pimoroni|Waveshare|Sunon|Noctua|
-Delta Electronics|Nidec|Schaeffler|Timken|Igus GmbH|Smooth On|Reprap Discount|Bambu Lab|Amazon|Amazon.com|Chilisin|JLCPCB|PCBWay|PEM|3M|AliExpress|Banggood|eBay|Hammond|Bud Industries|Keystone|Wiha|Wera|Misumi Europe|80/20 Inc|OpenBuilds Part Store""".replace("\n", "").split("|")} - {""},
+Delta Electronics|Nidec|PTC|JST|SCHROFF|Schroff|HARWIN|Harwin|ProSTEP|Sharp|MathWorks|Siemens PLM|Schaeffler|Timken|Igus GmbH|Smooth On|Reprap Discount|Bambu Lab|Amazon|Amazon.com|Chilisin|JLCPCB|PCBWay|PEM|3M|AliExpress|Banggood|eBay|Hammond|Bud Industries|Keystone|Wiha|Wera|Misumi Europe|80/20 Inc|OpenBuilds Part Store""".replace("\n", "").split("|")} - {""},
                key=len, reverse=True)
 KNOWNRE = re.compile(r"(?<![A-Za-z0-9])(" + "|".join(re.escape(k) for k in KNOWN) + r")(?![A-Za-z0-9])")
 # software / CAD vendors are reported separately (risky: watermarks, STEP originating_system)
