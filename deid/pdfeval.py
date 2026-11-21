@@ -39,6 +39,9 @@ def _init(reg, secret):
     from deid.rewrite import load_mappers
 
     _, G["m"] = load_mappers(reg, secret)  # content (global-scope) identities: what content rewriting applies
+    from deid.detect import Explainer
+
+    G["ex"] = Explainer(pseudonyms=G["m"].entries.values())
     G["ptok"] = {t for p in G["m"].entries.values() for t in re.findall(r"[a-z0-9]+", p.lower())}
 
 
@@ -55,7 +58,34 @@ def _pages(path, max_pages=8):
         for i, pg in enumerate(d):
             if i >= max_pages:
                 break
-            out.append(pg.get_text("text").encode("ascii", "ignore").decode().lower())
+            out.append(pg.get_text("text").encode("ascii", "ignore").decode())
+    return out
+
+
+_LABEL = re.compile(r"(?i:\b(?:drawn|checked|approved|designed|designer|author|engineer|drafter|created|prepared|"
+                    r"reviewed|owner|contact)\b(?:\s+by)?\s*[:.]?\s*)([A-Z][a-z]{1,20}(?:[ ]+[A-Z]\.?(?![a-z])){0,1}"
+                    r"(?:[ ]+[A-Z][a-z]{1,20}){0,2})")
+_ORG = re.compile(r"\b([A-Z][\w&.-]{1,30}(?:[ ]+[A-Z][\w&.-]{1,30}){0,4})[ ,]+(Inc|Ltd|LLC|GmbH|AG|Corp|Corporation|"
+                  r"S\.A\.|B\.V\.|S\.r\.l\.|SRL|Pty|Limited|Co\., Ltd)\b\.?")
+_UNI = re.compile(r"\b((?:University|Institute|College|Universit[a-z]+|Laboratory)[ ]+of[ ]+[A-Z][a-z]+(?:[ ]+[A-Z][a-z]+){0,3}"
+                  r"|[A-Z][a-z]+(?:[ ]+[A-Z][a-z]+){0,3}[ ]+(?:University|Institute|Universit[a-z]+))\b")
+_COPY = re.compile(r"(?:\u00a9|\(c\)|(?i:copyright))\s*(?:\d{4}[-, ]*)*\s*([A-Z][\w&.-]{1,30}(?:[ ]+[A-Z][\w&.-]{1,30}){0,4})")
+
+
+def unknown_candidates(text, ex):
+    """Identity-shaped strings in output page text not explained by pseudonyms/generic words."""
+    from deid.detect import scan_patterns
+
+    out = []
+    for rx, kind in ((_LABEL, "label-name"), (_ORG, "company"), (_UNI, "institution"), (_COPY, "copyright")):
+        for mt in rx.finditer(text):
+            v = mt.group(0) if kind in ("company", "institution") else mt.group(1)
+            if not ex.explained(v):
+                out.append((kind, v.strip()))
+    c, samples = Counter(), {}
+    scan_patterns(text.encode("ascii", "ignore"), ex, c, samples)
+    for kind, vals in samples.items():
+        out.extend((kind, v) for v in vals)
     return out
 
 
@@ -75,8 +105,14 @@ def eval_pdf(src, dst, rel):
         b = _pages(dst)
     except Exception:
         b = []
+    file_bad = False
     for pi, ta in enumerate(a):
-        tb = b[pi] if pi < len(b) else ""
+        tb_raw = b[pi] if pi < len(b) else ""
+        for kind, v in unknown_candidates(tb_raw, G["ex"]):
+            r["unknown"] += 1
+            file_bad = True
+            fails.append(("unknown-" + kind, rel, pi + 1, v[:80], ""))
+        ta, tb = ta.lower(), tb_raw.lower()
         wa = [(x.start(), x.end(), x.group()) for x in _WORD.finditer(ta)]
         wb = [x.group() for x in _WORD.finditer(tb)]
         if not wa:
@@ -135,6 +171,9 @@ def eval_pdf(src, dst, rel):
                 fails.append(("no-pseudonym", rel, pi + 1, key, f"removed {n_in - left}, pseudonym found {n_ps}"))
     if len(b) < len(a):
         r["pages_lost"] += len(a) - len(b)
+    file_bad = file_bad or any(f[0] in ("leak", "scope-change", "scope-insert", "page-text-lost") for f in fails)
+    r["file_clean"] += int(not file_bad)
+    r["file_consistent"] += int(not any(f[0] == "no-pseudonym" for f in fails))
     return r, fails, obs
 
 
@@ -224,6 +263,15 @@ def main(argv=None):
     print(f"(b) consistency: occurrences consistent={tot['consistent'] / occ:.3f}; identities seen={len(seen)} "
           f"inconsistent={len(inc_ids)}")
     print(f"(c) distinct: shared replacements={len(shared)} pseudonym-equals-original={len(clash)}")
+    nf = tot["pdf_files"] or 1
+    print(f"per-file (server-like): clean (no leak/unknown/scope) {tot['file_clean'] / nf:.3f}  "
+          f"consistent {tot['file_consistent'] / nf:.3f}  unknown identity candidates {tot['unknown']}")
+    uk = Counter((f[0], f[3]) for f in fails if f[0].startswith("unknown-"))
+    with open(a.fail.replace(".tsv", "") + "-unknown.tsv", "w") as fh:
+        fh.write("count\tkind\tvalue\n")
+        for (k, v), n in uk.most_common():
+            fh.write(f"{n}\t{k[8:]}\t{v}\n")
+    print("unknown candidates by kind:", Counter(k for k, _ in uk.elements()).most_common())
     print("failures by type:", Counter(f[0] for f in fails).most_common())
     with open(a.fail, "w") as fh:
         fh.write("type\tpath\tpage\toriginal\tobserved\n")

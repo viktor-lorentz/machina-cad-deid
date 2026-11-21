@@ -18,6 +18,9 @@ def test_eval_pdf_categories(tmp_path):
     m.add("Acme Robotics", "company")
     pdfeval.G["m"] = m
     pdfeval.G["ptok"] = set()
+    from deid.detect import Explainer
+
+    pdfeval.G["ex"] = Explainer(pseudonyms=m.entries.values())
     pj, pa = m.pseudonym("Jane Doe"), m.pseudonym("Acme Robotics")
     src = tmp_path / "in.pdf"
     _mk(src, ["Drawn by Jane Doe", "Material steel 304", "Acme Robotics bracket"])
@@ -29,6 +32,15 @@ def test_eval_pdf_categories(tmp_path):
     bad = tmp_path / "bad.pdf"
     _mk(bad, ["Drawn by Zuzu Kaka", "Material XXXXX 304", "Acme Robotics bracket"])
     r, f, o = pdfeval.eval_pdf(str(src), str(bad), "bad.pdf")
-    kinds = sorted(x[0] for x in f)
+    kinds = sorted(x[0] for x in f if not x[0].startswith("unknown-"))
     assert kinds == ["leak", "no-pseudonym", "scope-change"], f
     assert r["removed"] == 1 and r["consistent"] == 0 and r["leak"] == 1
+
+
+def test_unknown_candidates():
+    from deid.detect import Explainer
+
+    ex = Explainer(pseudonyms=["bazodi kemiru"])
+    txt = "Drawn by: Peter Novak\nAcme Widgets GmbH\nUniversity of Freiburg\n(c) 2019 Foobar Labs\nDrawn by Bazodi Kemiru"
+    kinds = sorted(k for k, _ in pdfeval.unknown_candidates(txt, ex))
+    assert kinds == ["company", "copyright", "institution", "label-name"], kinds
