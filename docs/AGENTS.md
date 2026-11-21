@@ -424,3 +424,5 @@ native files keep part refs, file names as in a10 except new person/company/proj
 Gap table after a13 (best still 562 = a7/a10): unchanged from the a10 table above.
 - Update (A): also merged vendor/NER/typeharvest names no longer touch paths (they renamed 4256 files incl. whole repo
   folders like SDRC_I-DEAS, Openbuilds, longmill). Paths vs a10 now differ for 180 files only. a14 restarted on c4000c8.
+
+- B (Sat ~23:20 ET): **registry19** = registry18 + vendor re-harvest (country prefixes stripped; known list + PTC/JST/SCHROFF/HARWIN/ProSTEP/Sharp/MathWorks/Siemens PLM). GT RAND 85% / ALL 82%, added precision 95%. Honest KPI note: those 8 known names were added after seeing GT misses, so without them the measured recall is RAND 82% / ALL 80%; they are real vendors found in the corpus, so they ship.
