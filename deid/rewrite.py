@@ -81,6 +81,40 @@ def _basename_mapper(m: Mapper) -> Mapper:
     return bm
 
 
+NATIVE_EXT = {"sldprt", "sldasm", "slddrw", "sldlfp", "slddrt", "ipt", "iam", "idw", "ipn", "par", "psm", "asm", "dft",
+              "catpart", "catproduct", "catdrawing", "prt", "drw", "neu", "x_t", "x_b"}
+
+
+def _stem_key(name: str) -> str:
+    """Lower-case file stem without version suffix (part.prt.3 -> part)."""
+    b = re.sub(r"\.\d+$", "", name.lower())
+    return b.rpartition(".")[0] or b
+
+
+def native_stems(files) -> frozenset:
+    out = set()
+    for f in files:
+        b = re.sub(r"\.\d+$", "", f.rsplit("/", 1)[-1].lower())
+        if b.rpartition(".")[2] in NATIVE_EXT:
+            out.add(b.rpartition(".")[0])
+    return frozenset(out)
+
+
+_PM: dict = {}
+
+
+def _part_mapper(m: Mapper) -> Mapper:
+    pm = _PM.get(id(m))
+    if pm is None:
+        pm = Mapper(secret=m.secret)
+        for k, v in m.entries.items():
+            if m.kinds.get(k) == "part":
+                pm.entries[k] = v
+                pm.kinds[k] = "part"
+        _PM[id(m)] = pm
+    return pm
+
+
 def map_path(rel: str, allm: Mapper, content: Mapper, rename: bool) -> str:
     if not rename:
         return rel
@@ -102,7 +136,14 @@ def map_path(rel: str, allm: Mapper, content: Mapper, rename: bool) -> str:
             stem, dot, ext = new.rpartition(".")
             # the extension is never renamed; file stems only take person/account/email/domain/phone renames:
             # native CAD files reference each other by file name inside streams we cannot always rewrite
-            new = _basename_mapper(content).replace_text(stem) + dot + ext
+            new_stem = _basename_mapper(content).replace_text(stem)
+            # drawing <-> model correspondence: a part/drawing number used as a file stem is replaced in
+            # the drawing text, so the file must carry the same pseudonym -- unless a native CAD file
+            # shares the stem (native files reference each other by name inside streams we cannot rewrite)
+            ns = G.get("native_stems")
+            if ns is not None and G.get("content") is not None and _stem_key(seg) not in ns:
+                new_stem = _part_mapper(G["content"]).replace_text(new_stem)
+            new = new_stem + dot + ext
         else:
             new = content.replace_text(new)
         out.append(new)
@@ -119,7 +160,9 @@ def _in_step_string(data: bytes, s: int, e: int) -> bool:
     win = max(0, s - 200_000)
     if data.rfind(b"/*", win, s) > data.rfind(b"*/", win, s):
         return True  # inside a (possibly multi-line) comment
-    ls = max(data.rfind(b";", 0, s), data.rfind(b"\n", 0, s)) + 1
+    # strings may span lines (FILE_NAME paths); quotes inside strings are doubled (''), so parity
+    # from the start of the statement is exact
+    ls = data.rfind(b";", win, s) + 1 or win
     return data.count(b"'", ls, s) % 2 == 1
 
 
@@ -492,6 +535,8 @@ def _link(src: str, dst: str) -> None:
 def run(root: str, out_root: str, registry_path: str, secret: bytes, opts: dict, workers=None) -> None:
     files = list_files(root)
     print(f"rewriting {len(files)} files -> {out_root} opts={opts}", file=sys.stderr)
+    if opts.get("part_stems", True) and opts.get("rename"):
+        opts = dict(opts, native_stems=native_stems(files))
     results = []
     with Pool(workers or os.cpu_count(), initializer=_init, initargs=(registry_path, secret, opts)) as pool:
         for i, r in enumerate(pool.imap_unordered(process, [(root, out_root, f) for f in files], chunksize=16)):
