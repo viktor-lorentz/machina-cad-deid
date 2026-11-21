@@ -145,5 +145,45 @@ def main(argv):
     print(f"files {len(paths)} candidates {len(cnt)} kept {kept}")
 
 
+
+
+# ---- selection: stats -> clean list ------------------------------------------------------------------------------
+EXCL2 = [re.compile(x, re.I) for x in (
+    r"^\d+\s*awg$", r"^\d+\s*-?pins?$", r"^\d+p$", r"^UN[CFE]?-?\d", r"^\d+-UN[CFE]", r"^R\.\d", r"^[a-z]\d+\.\d+$", r"^AP2\d\d$", r"^AP24\d",
+    r"^(?:LQFP|TQFP|QFN|DFN|SOIC|SOP|SOT|TSSOP|SSOP|MSOP|DIP|PDIP|BGA|LGA|SMD|TO|SC|SOD|DO|MELF|QFP|PLCC|WLCSP|HTSSOP|VQFN|UQFN)-?\d",
+    r"_P\d", r"^\d{1,3}-\d{1,3}$", r"^\d{3,5}-[a-z]{1,2}$", r"^Y14\.", r"^\d+(?:[.,]\d+)?(?:mm|in)?[x×]\d", r"^(?:CC|BY|SA|NC)-",
+    r"^(?:AISI|EN|AW|AL|SS|ST)\d", r"^\d+(?:[.,]\d+)?(?:mm|cm|kg|nm|uf|nf|pf|mh|uh|kohm|ohm|k|r|v|a|w|mw)$", r"^(?:rev|ver|v)[\-_.]?\d",
+    r"^(?:sheet|page|fig|detail|section|view|item|step|part|no|nr)[\-_.]?\d", r"^\d+(?:st|nd|rd|th)$", r"^[a-z]{1,2}\d{1,2}$",
+    r"^(?:m|g|r|w|t|h|n|c|p)\d+(?:[.,]\d+)?$", r"^\d+[a-z]$", r"^iso", r"^din", r"^gb\d", r"^jis",
+)]
+
+
+def keep_value(kind, v, repos, max_repos):
+    if kind == "address":
+        return len(v) >= 6 and re.search(r"[A-Za-zÄÖÜäöüß]{3}", v) is not None and re.search(r"\d", v) is not None
+    if kind == "host":
+        return True
+    if not v.isascii() or repos > max_repos or any(x.search(v) for x in EXCL2):
+        return False
+    return True
+
+
+def select(stats, out, max_repos=3):
+    n = 0
+    with open(out, "w") as fh:
+        for l in open(stats, encoding="utf-8", errors="ignore"):
+            try:
+                cnt, reps, kind, v = l.rstrip("\n").split("\t")
+            except ValueError:
+                continue
+            if keep_value(kind, v, int(reps), max_repos):
+                fh.write(f"{'part' if kind == 'code' else 'domain' if kind == 'host' else 'address'}\t{v}\n")
+                n += 1
+    return n
+
+
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    if sys.argv[1:2] == ["select"]:
+        print("selected", select(sys.argv[2], sys.argv[3], int(sys.argv[4]) if len(sys.argv) > 4 else 3))
+    else:
+        main(sys.argv[1:])
