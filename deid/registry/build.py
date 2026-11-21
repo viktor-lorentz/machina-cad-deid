@@ -127,8 +127,15 @@ general notes note section detail view assembly unit units mm inch inches projec
 """.split())
 
 
+PHRASE_WORDS = set("""the of in and or for any be by to a an is are this that be their its it shall not from with
+without all rights reserved liable claim holders owners respective united states property copyright software
+provided as warranty damages notice permission""".split())
+
+
 def _bad_name(v: str, kind: str) -> bool:
     toks = re.findall(r"[^\W\d_]+", v.lower())
+    if " " in v and v == v.lower() and sum(t in PHRASE_WORDS for t in toks) >= 1:
+        return True  # lowercase prose fragment, not a name
     if re.search(r"\d", v) or re.fullmatch(r"[a-z]{2}-[A-Z]{2}", v):
         return True
     if not toks or all(t in NAME_STOP for t in toks):
@@ -155,6 +162,8 @@ def is_junk(v: str, kind: str, files: int, from_path: bool) -> bool:
     if a <= 4 and (files <= 1 or re.search(r"\d", v)):
         return True
     if kind == "account" and not re.search(r"[aeiouy]", v, re.I):
+        return True
+    if kind in ("person", "company", "account", "project") and " " in v and _bad_name(v, kind):
         return True
     if kind in ("person", "company") and _bad_name(v, kind):
         return True
