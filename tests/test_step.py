@@ -30,3 +30,14 @@ def test_rewrite_changes_identity_only():
     out = step.rewrite(SAMPLE, m)
     assert b"Jane Doe" not in out and b"Acme Robotics Inc" not in out
     assert b"(1.5,2.5,3.5)" in out and b"SolidWorks 2018" in out
+
+
+def test_rewrite_never_touches_keywords():
+    from deid.rewrite import rw_step
+    m = Mapper()
+    m.add("DEFINITION", "company")
+    m.add("Jane Doe", "person")
+    data = b"#5=PRODUCT_DEFINITION('DEFINITION','Jane Doe',#4);\n/* by Jane Doe */\n"
+    out = rw_step(data, m)
+    assert out.startswith(b"#5=PRODUCT_DEFINITION('") and b"Jane Doe" not in out
+    assert b"'DEFINITION'" not in out and len(out) == len(data)

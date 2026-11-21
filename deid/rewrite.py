@@ -75,6 +75,18 @@ def rw_text(data: bytes, m: Mapper) -> bytes:
     return m.replace_bytes(data, ("ascii",))
 
 
+def _in_step_string(data: bytes, s: int, e: int) -> bool:
+    """True if [s, e) lies inside a quoted literal or a /* comment */ of a STEP file."""
+    ls = max(data.rfind(b";", 0, s), data.rfind(b"\n", 0, s)) + 1
+    if data.rfind(b"/*", ls, s) > data.rfind(b"*/", ls, s):
+        return True
+    return data.count(b"'", ls, s) % 2 == 1
+
+
+def rw_step(data: bytes, m: Mapper) -> bytes:
+    return m.replace_bytes(data, ("ascii",), accept=_in_step_string)
+
+
 def rw_stl(data: bytes, m: Mapper) -> bytes:
     if data[:5].lower() == b"solid" and b"facet" in data[:2000]:
         return rw_text(data, m)
@@ -226,7 +238,7 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
     if not data:
         return data
     if e in ("step", "stp", "p21") or head.startswith(b"ISO-1030"):
-        return rw_text(data, m)
+        return rw_step(data, m)
     if e == "stl":
         return rw_stl(data, m)
     if head.startswith(b"%PDF") or e == "pdf":

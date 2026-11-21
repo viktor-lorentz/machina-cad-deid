@@ -58,6 +58,13 @@ def _base(secret: bytes, key: str, salt: int) -> str:
     return "".join(out)
 
 
+def _random_base(secret: bytes, key: str, salt: int) -> str:
+    """Wider space (any letter) for short keys whose syllable space is used up."""
+    rnd = _stream(secret, key, salt)
+    return "".join(chr(97 + next(rnd) % 26) if "a" <= c <= "z" else str(next(rnd) % 10) if "0" <= c <= "9" else c
+                   for c in key)
+
+
 def apply_case(occurrence: str, base: str) -> str:
     """Map base's alnum chars onto occurrence's alnum positions, keeping case."""
     alnum = [c for c in base if _ALNUM.match(c)]
@@ -88,10 +95,12 @@ class Mapper:
             return self.entries[key]
         salt = 0
         while True:
-            cand = _base(self.secret, key, salt)
+            cand = _base(self.secret, key, salt) if salt < 50 else _random_base(self.secret, key, salt)
             if cand != key and cand not in self._taken and cand not in self.entries:
                 break
             salt += 1
+            if salt > 500:  # pseudonym space exhausted (very short names): leave unmapped
+                return key
         self._taken.add(cand)
         self.entries[key] = cand
         self.kinds[key] = kind
@@ -104,14 +113,14 @@ class Mapper:
     # -- automaton ---------------------------------------------------------
     def _automaton(self, enc: str):
         if enc not in self._auto:
-            A = ahocorasick.Automaton(ahocorasick.STORE_ANY, ahocorasick.KEY_SEQUENCE)
+            A = ahocorasick.Automaton(ahocorasick.STORE_ANY, ahocorasick.KEY_STRING)
             n = 0
             for key in self.entries:
                 try:
                     kb = key.encode(enc)
                 except UnicodeEncodeError:
                     continue
-                A.add_word(tuple(kb), (len(kb), key))
+                A.add_word(kb.decode("latin-1"), (len(kb), key))
                 n += 1
             if n:
                 A.make_automaton()
@@ -126,7 +135,7 @@ class Mapper:
         low = data.lower()
         unit = 2 if enc == "utf-16-le" else 1
         hits = []
-        for end_idx, (ln, key) in A.iter(tuple(low)):
+        for end_idx, (ln, key) in A.iter(low.decode("latin-1")):
             start, end = end_idx - ln + 1, end_idx + 1
             if _is_word(data, start - unit, unit) or _is_word(data, end, unit):
                 continue
@@ -139,7 +148,7 @@ class Mapper:
                 last = h[1]
         return out
 
-    def replace_bytes(self, data: bytes, encodings=("ascii", "utf-16-le")) -> bytes:
+    def replace_bytes(self, data: bytes, encodings=("ascii", "utf-16-le"), accept=None) -> bytes:
         """Same-length replacement of every registered identity."""
         if not self.entries:
             return data
@@ -152,6 +161,8 @@ class Mapper:
             if buf is None:
                 buf = bytearray(data)
             for s, e, key in hits:
+                if accept is not None and not accept(src, s, e):
+                    continue
                 occ = src[s:e].decode(enc, "replace")
                 rep = self.pseudonym(occ).encode(enc, "replace")
                 if len(rep) == e - s:
