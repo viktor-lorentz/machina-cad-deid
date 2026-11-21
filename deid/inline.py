@@ -216,3 +216,71 @@ if __name__ == "__main__":
         ner = a[a.index("--ner") + 1] if "--ner" in a else None
         cache = a[a.index("--cache") + 1] if "--cache" in a else None
         build(a[1], a[2], j, ner, cache)
+
+
+# ---- expand: grow registry hits to the enclosing code token / legal suffix ---------------------------------------
+#   python -m deid.inline expand REGISTRY INPUT_DIR OUT.tsv [-j 28]
+_MAP = None
+CODECH = re.compile(rb"[A-Za-z0-9_+\-/]")
+SUFFIX = re.compile(rb"\s(?:GmbH|Inc\.?|Ltd\.?|LLC|AG|S\.A\.|B\.V\.|Co\.,?\s?Ltd\.?|Corp\.?|s\.r\.o\.|Oy|A/S|AB|SE|S\.r\.l\.|S\.L\.|Pty\.?\s?Ltd\.?|KG|GmbH\s&\sCo\.\sKG)(?![A-Za-z])")
+
+
+def _grow(b, s, e):
+    """Extend [s,e) over code characters; ',' and '.' only between digits/alnum."""
+    def ok(i):
+        if i < 0 or i >= len(b):
+            return False
+        c = b[i:i + 1]
+        if CODECH.match(c):
+            return True
+        if c in (b",", b".") and 0 < i < len(b) - 1:
+            return chr(b[i - 1]).isalnum() and chr(b[i + 1]).isdigit()
+        return False
+    while ok(s - 1):
+        s -= 1
+    while ok(e):
+        e += 1
+    while e > s and b[e - 1:e] in (b".", b",", b"/", b"-", b"_", b"+"):
+        e -= 1
+    while s < e and b[s:s + 1] in (b"/", b"-", b"_", b"+"):
+        s += 1
+    return s, e
+
+
+def expand_file(path):
+    out = set()
+    for t in _texts(path):
+        b = re.sub(r"\s+", " ", t).encode("utf-8", "replace")
+        if len(b) < 4:
+            continue
+        for s, e, _ in _MAP.find(b, "ascii"):
+            gs, ge = _grow(b, s, e)
+            if (gs, ge) != (s, e) and ge - gs <= 40:
+                v = b[gs:ge].decode("utf-8", "ignore")
+                if re.search(r"\d", v) and re.search(r"[A-Za-z]", v) and v.isascii():
+                    out.add(("part", v))
+            m = SUFFIX.match(b, e)
+            if m and b[s:s + 1].isupper():
+                out.add(("company", b[s:m.end()].decode("utf-8", "ignore")))
+    return out
+
+
+def expand(reg, root, out, j=28):
+    global _MAP
+    from deid.rewrite import load_mappers
+    _, _MAP = load_mappers(reg, b"machina-deid-default-secret")
+    _MAP.find(b"warm up", "ascii")
+    paths = [os.path.join(d, f) for d, _, fs in os.walk(root) for f in fs if f.lower().endswith((".pdf", ".txt", ".md", ".csv"))]
+    vals = set()
+    with Pool(j) as pool:
+        for s in pool.imap_unordered(expand_file, paths, chunksize=16):
+            vals |= s
+    with open(out, "w") as fh:
+        for k, v in sorted(vals, key=lambda x: x[1]):
+            fh.write(f"{k}\t{v}\n")
+    print(f"files {len(paths)} expanded values {len(vals)}")
+
+
+if __name__ == "__main__" and sys.argv[1:2] == ["expand"]:
+    a = sys.argv[1:]
+    expand(a[1], a[2], a[3], int(a[a.index("-j") + 1]) if "-j" in a else 28)
