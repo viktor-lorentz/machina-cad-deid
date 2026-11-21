@@ -232,6 +232,27 @@ http https www ftp utf ascii unicode iso ansi asme astm din jis gost bsi afnor i
 unthreaded threaded metric imperial adobe xmp xmpmeta exif tiff jfif icc srgb""".split())
 
 
+_STEMS = None
+
+
+def _file_stems() -> set:
+    """DEID_KEEP_FILE_CODES=/path/to/stems.txt: part codes equal to a corpus file stem are not replaced."""
+    global _STEMS
+    if _STEMS is None:
+        p = os.environ.get("DEID_KEEP_FILE_CODES")
+        _STEMS = set()
+        if p and os.path.exists(p):
+            for line in open(p, encoding="utf-8", errors="replace"):
+                stem = line.strip().rsplit("/", 1)[-1]
+                stem = stem.rsplit(".", 1)[0] if "." in stem else stem
+                if stem:
+                    _STEMS.add(stem.lower())
+                    for tok in re.split(r"[ _]", stem):
+                        if len(tok) >= 6:
+                            _STEMS.add(tok.lower())
+    return _STEMS
+
+
 def is_junk(v: str, kind: str, files: int, from_path: bool) -> bool:
     if v.lower().strip() in FORMAT_WORDS:
         return True
@@ -321,6 +342,9 @@ def build(candidates_path: str, out_path: str) -> dict:
             pv = row["value"]
             # vendor catalogue numbers (pure digits) and short model codes / fragments are not project identities
             if len(pv) < 6 or not re.search(r"[A-Za-z]", pv) or not re.search(r"\d", pv) or not pv.isascii():
+                continue
+            if _file_stems() and pv.lower() in _file_stems():
+                # the code names a file (drawing <-> model correspondence): keep it everywhere
                 continue
             row = dict(row, kind="part")
             # identifying part / document numbers: project-local codes only
