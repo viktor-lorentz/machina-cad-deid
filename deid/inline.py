@@ -53,9 +53,17 @@ ROLECUE = re.compile(r"(?i)\b(?:drawn|checked|approved|designed|designer|engr|di
 EMAIL = re.compile(r"[A-Za-z0-9._%+\-]{1,64}@[A-Za-z0-9.\-]{1,120}\.[A-Za-z]{2,10}")
 
 
+NOTNAME = set("""january february march april may june july august september october november december jan feb mar apr jun jul aug sep
+sept oct nov dec monday tuesday wednesday thursday friday saturday sunday australia austria belgium brazil canada china denmark
+finland france germany india italy japan korea mexico netherlands norway poland spain sweden switzerland taiwan usa china england
+gnd vbus vcc vdd vss nvm pla petg abs allen fecha druck datum zeichnung zeichnungsnummer gehause gehäuse kurbelwelle zylinder
+zylinderkopf bohrung kleinmaterial schaltgerate aluminium masa proj elec mech fan linux github gitlab reprap matlab dupont taptite
+trilobular ligo pcb pdf dmm triac bbb contacto vistas cortes estudiantes""".split())
+
+
 def _person_ok(v):
     toks = re.findall(r"[A-Za-zà-ÿ'\-]+", v)
-    if not toks or len(v) < 2:
+    if not toks or len(v) < 2 or any(t.lower() in NOTNAME for t in toks):
         return False
     if re.fullmatch(r"[A-Z]{2,4}", v):
         return v not in P.STOP and v not in P.JARGON and (len(v) <= 2 or not common(v))
@@ -160,7 +168,7 @@ def ner_values(preds_path, min_score=0.45):
             v = re.sub(r"\s+", " ", v).strip(" ,.;:()[]\"'")
             if not k or sc < min_score or len(v) < 3 or len(v) > 80 or not re.search(r"[A-Za-z]{2}", v):
                 continue
-            if v.lower() in NER_STOP or all(common(t) for t in re.findall(r"[A-Za-z]+", v)):
+            if v.lower() in NER_STOP or v.lower() in NOTNAME or all(common(t) for t in re.findall(r"[A-Za-z]+", v)):
                 continue
             if k == "person" and not _person_ok(v):
                 continue
