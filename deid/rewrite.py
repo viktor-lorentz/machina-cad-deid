@@ -243,6 +243,12 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
     if e == "stl":
         return rw_stl(data, m)
     if head.startswith(b"%PDF") or e == "pdf":
+        from deid.formats import pdftext
+
+        try:
+            data = pdftext.rewrite(data, m)
+        except Exception:
+            pass
         try:
             return rw_pdf(data, m)
         except Exception:

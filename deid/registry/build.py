@@ -151,6 +151,8 @@ def build(candidates_path: str, out_path: str) -> dict:
                 continue
             if kind == "domain" and not valid_host(v):
                 continue
+            if kind == "phone" and len(re.sub(r"\D", "", v)) < 8:
+                continue
             if not v or alnum_len(v) < 2 or len(v) > 120:
                 continue
             if low in STOP and not (row["kind"] in ("account", "project", "domain") and value == row["value"]
