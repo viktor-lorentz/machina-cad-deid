@@ -166,6 +166,11 @@ LEAD = re.compile(r"^(?:(?i:sole|written|permission|case|will|de|the|property|of
                   r"see|contact|courtesy|and|or|is|a|an|distributed|produced|generated|licensed|under|trademark|trademarks|registered|"
                   r"step caselib|in|on|use|this|that|our|your|while|when|if|as|please|thanks|thank|visit|supplied|sold|manufactured|provided|"
                   r"purchased|bought|available|order|ordered|courtesy of|via|contact|email|call|note|notes|both|each|any|an?)[ ,]+)+")
+COUNTRY = re.compile(r"^(?:(?:Australia|Austria|Belgium|Brazil|Canada|China|Czech Republic|Denmark|Finland|France(?:,\s*(?:east|west|north|south))?|"
+                     r"Germany|Great Britain|United Kingdom|UK|USA|United States|Hungary|India|Israel|Italy|Japan|Korea|South Korea|Mexico|"
+                     r"Netherlands|Norway|Poland|Portugal|Romania|Russia|Singapore|Slovakia|Slovenia|Spain|Sweden|Switzerland|Taiwan|Thailand|"
+                     r"Turkey|Ukraine|New Zealand|South Africa|Argentina|Chile|Greece|Ireland|Malaysia|Indonesia|Vietnam|Philippines|"
+                     r"Deutschland|Schweiz|Österreich|España|Italia|Nederland)[ ,:]+)+")
 TAIL = re.compile(r"(?:[ ,.]+(?:All|All rights.*|Page|page|CC BY-SA|CC-BY.*|Rev.*|Ltd\. All))+$")
 GENERIC = {"author", "open cascade", "user", "users", "administrator", "admin", "sysadmin", "konstrukteur", "china", "unknown", "none",
            "managed by terraform", "pcbnew", "nist", "sdrc", "university", "seller", "buyer", "company", "national institute", "owner",
@@ -183,6 +188,7 @@ def select(harvest_tsv, out_tsv, min_count=1):
         if int(n) < min_count:
             continue
         v = LEAD.sub("", v)
+        v = COUNTRY.sub("", v)
         v = TAIL.sub("", v).strip(" ,.;:-")
         if "," in v and src == "legal":  # "<junk>, Name GmbH" -> keep from the last comma not directly before the suffix
             parts = re.split(r",\s+", v)
