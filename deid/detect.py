@@ -34,7 +34,7 @@ URLHOST = re.compile(rb"(?i)\b(?:https?|ftp)://([A-Za-z0-9.-]{3,253})")
 WINUSER = re.compile(rb"(?i)[A-Z]:[\\/]{1,2}(?:Users|Documents and Settings)[\\/]{1,2}([^\\/\"'<>|:*?\x00\r\n]{1,64})")
 UNIXUSER = re.compile(rb"/(?:home|Users)/([A-Za-z0-9._-]{2,64})")
 DOMUSER = re.compile(rb"(?<![A-Za-z0-9\\])([A-Z][A-Z0-9-]{2,15})\\([A-Za-z][A-Za-z0-9._-]{2,30})(?![A-Za-z0-9\\])")
-PHONE = re.compile(rb"(?<![\d.])(?:\+\d{1,3}[ .-]?)?(?:\(\d{3}\) ?|\d{3}[.-])\d{3}[.-]\d{4}(?![\d.])")
+PHONE = re.compile(rb"(?<![\d.])(?:\+\d{1,3}[ .-]?)?(?:\(\d{3}\) ?\d{3}([.-])|\d{3}([.-])\d{3}\2)\d{4}(?![\d.])")
 
 # Hosts, users and values that never identify anyone.
 ALLOW_HOSTS = {
@@ -95,7 +95,7 @@ def scan_patterns(data: bytes, ex: Explainer, out: Counter, samples: dict) -> No
         for m in EMAIL.finditer(v):
             s = _dec(m.group(0))
             host = s.rsplit("@", 1)[1].lower()
-            tld = host.rsplit(".", 1)[-1]
+            tld = s.rsplit(".", 1)[-1]
             if host in ALLOW_HOSTS or ex.explained(s) or not (tld.islower() or tld in ("com", "org", "net", "edu")) \
                     or min(len(x) for x in host.split(".")) < 2:
                 continue
@@ -213,6 +213,8 @@ def scan_ole_meta(data: bytes, ex: Explainer, out: Counter, samples: dict) -> li
             v = getattr(md, attr, None)
             if isinstance(v, bytes):
                 v = v.split(b"\x00", 1)[0]
+            elif isinstance(v, str):
+                v = v.split("\x00", 1)[0]
             if v:
                 _field(out, samples, ex, "ole-" + attr, v.decode("latin-1", "replace") if isinstance(v, bytes) else str(v))
         for path in o.listdir(streams=True, storages=False):
