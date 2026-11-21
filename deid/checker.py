@@ -74,7 +74,7 @@ def _structure(data: bytes, e: str):
 
 def check_one(args):
     in_root, out_root, rel, new_rel = args
-    res = {"found": 0, "usable": 0, "deid": 0, "ext": ext_of(rel)}
+    res = {"found": 0, "usable": 0, "deid": 0, "deid_strict": 0, "ind": {}, "ext": ext_of(rel)}
     src, dst = os.path.join(in_root, rel), os.path.join(out_root, new_rel)
     if not os.path.exists(dst) or ext_of(new_rel) != ext_of(rel) or new_rel.count("/") != rel.count("/"):
         return res
@@ -93,8 +93,11 @@ def check_one(args):
     except Exception:
         pass
     _, leaks = scan_file((out_root, new_rel))
-    res["deid"] = int(not leaks)
-    res["leaks"] = sum(leaks.values())
+    reg = {k: v for k, v in leaks.items() if not k.startswith("IND:")}
+    res["deid"] = int(not reg)
+    res["deid_strict"] = int(not leaks)
+    res["leaks"] = sum(reg.values())
+    res["ind"] = {k[4:]: v for k, v in leaks.items() if k.startswith("IND:")}
     return res
 
 
@@ -105,22 +108,28 @@ def run(in_root: str, out_root: str, results_json: str, reg: str, secret: bytes,
     random.Random(1234).shuffle(files)
     files = files[:n]
     tot = Counter()
+    ind_tot: Counter = Counter()
     by_ext: dict = {}
     with Pool(workers or os.cpu_count(), initializer=leak_init, initargs=(reg, secret)) as pool:
         for r in pool.imap_unordered(check_one, [(in_root, out_root, f, mapping.get(f, f)) for f in files],
                                      chunksize=16):
-            for k in ("found", "usable", "deid"):
+            for k in ("found", "usable", "deid", "deid_strict"):
                 tot[k] += r[k]
+            ind_tot.update(r["ind"])
             c = by_ext.setdefault(r["ext"], Counter())
             c["n"] += 1
             c["usable"] += r["usable"]
             c["deid"] += r["deid"]
     N = len(files)
-    rates = {k: tot[k] / N for k in ("found", "usable", "deid")}
+    rates = {k: tot[k] / N for k in ("found", "usable", "deid", "deid_strict")}
     score = round(1000 * (0.15 * rates["found"] + 0.15 * rates["usable"] + 0.70 * rates["deid"] * rates["usable"]))
+    strict = round(1000 * (0.15 * rates["found"] + 0.15 * rates["usable"]
+                           + 0.70 * rates["deid_strict"] * rates["usable"]))
     print(f"held-out files: {N}  found={rates['found']:.4f} usable={rates['usable']:.4f} "
-          f"deid={rates['deid']:.4f}  LOCAL SCORE={score}", file=sys.stderr)
+          f"deid={rates['deid']:.4f} deid_strict={rates['deid_strict']:.4f}  "
+          f"LOCAL SCORE={score}  STRICT SCORE={strict}", file=sys.stderr)
+    print("independent findings by kind:", ind_tot.most_common(20), file=sys.stderr)
     worst = sorted(by_ext.items(), key=lambda kv: -(kv[1]["n"] - kv[1]["deid"]))[:12]
     for e, c in worst:
         print(f"  {e or '(none)'}: n={c['n']} usable={c['usable']} deid={c['deid']}", file=sys.stderr)
-    return {"score": score, **rates}
+    return {"score": score, "strict": strict, **rates}
