@@ -77,9 +77,10 @@ def rw_text(data: bytes, m: Mapper) -> bytes:
 
 def _in_step_string(data: bytes, s: int, e: int) -> bool:
     """True if [s, e) lies inside a quoted literal or a /* comment */ of a STEP file."""
+    win = max(0, s - 200_000)
+    if data.rfind(b"/*", win, s) > data.rfind(b"*/", win, s):
+        return True  # inside a (possibly multi-line) comment
     ls = max(data.rfind(b";", 0, s), data.rfind(b"\n", 0, s)) + 1
-    if data.rfind(b"/*", ls, s) > data.rfind(b"*/", ls, s):
-        return True
     return data.count(b"'", ls, s) % 2 == 1
 
 

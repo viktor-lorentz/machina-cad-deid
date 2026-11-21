@@ -41,3 +41,12 @@ def test_rewrite_never_touches_keywords():
     out = rw_step(data, m)
     assert out.startswith(b"#5=PRODUCT_DEFINITION('") and b"Jane Doe" not in out
     assert b"'DEFINITION'" not in out and len(out) == len(data)
+
+
+def test_multiline_comment_rewritten():
+    from deid.rewrite import rw_step
+    m = Mapper()
+    m.add("step.parts", "project")
+    data = b"ISO-10303-21;\nHEADER;\n/* metadata\n * Distributed by step.parts: x\n */\nFILE_NAME('a');\n"
+    out = rw_step(data, m)
+    assert b"step.parts" not in out and len(out) == len(data)
