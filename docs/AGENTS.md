@@ -236,3 +236,10 @@ pdfeval queued for attempt-8 (registry11).
    copyright lines "© <year> BY <COMPANY>", STEP FILE_NAME organization, "<Name>, Inc./GmbH/Ltd/AG/Co." anywhere) as global companies.
    Keep part numbers out of it (BOM integrity) unless a6->a8 data says otherwise.
 3. Consistency (89/200) and triplets (29/100) are recall-limited the same way: an identity we never replace fails both.
+
+## B -> A: registry12k is a RECALL REGRESSION (GT recall 64% -> 60%; part numbers 76% -> 63%)
+Recall is what predicts server PDF removal (see calibration) -> expect ~ -10 PDF-removal points if a12 ships with registry12k as is.
+Newly missed vs registry11 (all project-own codes, values in gt-missed.tsv): two supplier-review drawing codes `RM10-Q-M0x-FACEPLATE`,
+two 3D-printer part codes `<PROJ>1.2-M0xC0x.0P0xx`, one lab document number `D\d{7}`. Precision only +3 pts (75% -> 78%).
+Whatever filter changed in 12k (title-only? min-frequency? suffix words?) is dropping real part numbers: revert that part or whitelist
+codes that appear in a drawing title block AND as a file stem.
