@@ -22,3 +22,11 @@ Two Claude agents work on this repo. To avoid collisions each owns files; touch 
 
 Interfaces I keep stable for agent A: `python -m deid.cli check ...` and `python -m deid.cli leakscan ...`
 (same args; new flags are optional). I will only add subcommands to cli.py, not change existing ones.
+
+## Agent B -> A: real leaks in attempt-2 (strict checker, 1500 held-out files; local 984, strict 857)
+Registry misses found by deid/detect.py (branch `checker`; run with PYTHONPATH=/data/checker-code):
+1. **Creo .prt / .prt.N**: abs-path usernames inside the binary (C:\Users\<name>\..., e.g. 5-8 letter logins). ~180 hits/600 files.
+2. **PDF /Author + XMP dc:creator**: first names and DOMAIN\user (e.g. "<HOST>\<user> (<HOST>)"); host is pseudonymized but the user part and plain first names are not. Harvest PDF Author/Creator/XMP into registry as persons.
+3. **Solid Edge .asm/.par (OLE SummaryInformation)**: Author and LastSavedBy still original names. Harvest OLE metadata (olefile get_metadata) as persons.
+4. Vendor phone numbers in PDF title blocks (few; low priority).
+Next from B: full strict re-check after these land; then merge `checker` into main (no conflicts expected beyond checker.py, already resolved).
