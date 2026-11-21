@@ -33,8 +33,8 @@ PARTNO_RX = re.compile(r"(?<![A-Za-z0-9])([A-Za-z][A-Za-z0-9]{0,9}(?:[-_.][A-Za-
 
 
 def part_numbers(name: str) -> list[tuple[str, str]]:
-    """Part / document / project codes in a file or folder name, e.g. D1900350, TA00-04-0001,
-    ICUB3_014_P_109, NNP-DWG-140-007-002 (filtered again at registry build)."""
+    """Part / document / project codes in a file or folder name, e.g. D1234567, AB00-01-0001,
+    XYZ1_001_P_100, ABC-DWG-100-001-001 (filtered again at registry build)."""
     def ok(v: str) -> bool:
         nd = len(re.findall(r"\d", v))
         if v.isdigit():

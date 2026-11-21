@@ -106,8 +106,8 @@ class Mapper:
         return cand
 
     def _compose(self, key: str, kind: str) -> str:
-        """Word-by-word pseudonym: 'l. spruyt' and 'spruyt' share the surname pseudonym,
-        'user@mek.dtu.dk' reuses the pseudonyms of 'user' and 'dtu'."""
+        """Word-by-word pseudonym: 'j. smith' and 'smith' share the surname pseudonym,
+        'user@dept.uni.edu' reuses the pseudonyms of 'user' and 'uni'."""
         runs = list(re.finditer(r"[a-z0-9]+", key))
         last_label = runs[-1] if runs and kind in ("email", "domain") and "." in key else None
         out, pos = [], 0

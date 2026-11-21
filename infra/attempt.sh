@@ -29,7 +29,7 @@ mkdir -p "$OUT/code"
 git archive HEAD | tar -x -C "$OUT/code"
 $CODE/.venv/bin/pip freeze > "$OUT/code/requirements.lock"
 git rev-parse HEAD > "$OUT/code/COMMIT"
-PYTHONPATH="$CODE" $PY "$CODE/tools/scrub_code.py" "$OUT/code" "$REG"
+$PY "$CODE/tools/scrub_code.py" "$OUT/code" "$REG"
 $PY -m deid.cli readme --attempt "attempt-$N" --results "/data/attempts/attempt-$N.results.json" \
   --registry "$REG" --flags "$FLAGS" -o "$OUT/README.txt"
 echo "== objects: $(find "$OUT/corpus" -type f | wc -l)  size: $(du -sh "$OUT/corpus" | cut -f1)"
