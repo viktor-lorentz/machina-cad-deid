@@ -444,15 +444,18 @@ def build(candidates_path: str, out_path: str) -> dict:
                 and field_ok(v) and v.lower() not in FORMAT_WORDS:
             reg[v.lower()] = {"value": v, "kind": row["kind"][:-6], "scope": "field", "files": row["files"]}
     # spelling variants of repo-style project names: "BCN3D-Moveo" is printed as "BCN3D Moveo"
-    from deid.formats.pdftext import _common_words
+    from deid.formats.pdftext import TECH_STOP, _common_words
 
     for r in list(reg.values()):
         if r["kind"] != "project" or not re.search(r"[-_]", r["value"]):
             continue
-        words = [w for w in re.split(r"[-_]+", r["value"]) if w]
-        if len(words) < 2 or len(words) > 4 or any(len(w) < 2 for w in words):
+        if "." in r["value"] or " " in r["value"]:
             continue
-        if not any(len(w) >= 4 and re.search(r"[A-Za-z]", w) and w.lower() not in _common_words() for w in words):
+        words = [w for w in re.split(r"[-_]+", r["value"]) if w]
+        if len(words) < 2 or len(words) > 3 or any(len(w) < 2 for w in words):
+            continue
+        # every alphabetic word must be invented / a name (not dictionary): no running-text phrases
+        if any(w.isalpha() and (w.lower() in _common_words() or w.lower() in TECH_STOP) for w in words):
             continue
         v = " ".join(words)
         if v.lower() not in reg:
