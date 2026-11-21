@@ -504,3 +504,4 @@ gate it the moment it lands.
   Cost 0.3 s at load; deterministic (same mapping hash on repeated runs); no model at build time.
 - Build attempt 16 with registry20 + DEID_INLINE_NER=1. I'll pdfeval it for scope (over-redaction is expected to rise a little).
 - Remaining RAND gap is NOT persons: projects 71%, vendor parts 79%, part numbers 90%, some institutions. Next cycle targets those.
+- B (Sun ~03:40 ET): `/data/registry/inline.tsv` updated = inline + CAD header file-name stems (STEP/IGES FILE_NAME; newline bug fixed). Gate vs registry20: RAND 85% -> **89%**, ALL 83% -> 87%, precision 71%. Same flag/hook.
