@@ -195,7 +195,8 @@ def build(candidates_path: str, out_path: str) -> dict:
             from deid.formats.pdftext import near_word_ok
 
             last = row["value"].split(".")[-1].strip()
-            if row.get("repos", 0) > 5 or not re.search(r"[a-z]", row["value"], re.I) or not near_word_ok(last):
+            if row.get("repos", 0) > 5 or row.get("files", 0) < 2 or not re.search(r"[a-z]", row["value"], re.I) \
+                    or not near_word_ok(last):
                 continue
             row = dict(row, kind="person")
         if row["kind"] in ("partno", "dwgno"):
