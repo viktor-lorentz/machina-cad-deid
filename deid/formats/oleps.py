@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import re
 import struct
 import uuid
 
@@ -96,12 +97,23 @@ def rewrite_fields(body: bytes, mapper) -> bytes:
 
     buf = None
     for fmtid, pid, val, (off, nbytes, enc) in parse(body, positions=True):
-        if not _kind(fmtid, pid) or norm(val) not in mapper.entries:
+        kind = _kind(fmtid, pid)
+        if not kind:
             continue
+        m = mapper
+        if norm(val) not in mapper.entries:
+            # unregistered saved account / author (e.g. generic "User"): still pseudonymised in its field
+            v = val.strip()
+            if kind not in ("account", "person") or len(v) < 3 or len(re.findall(r"[^\W\d_]", v)) < 2:
+                continue
+            from deid.registry.pseudonym import Mapper
+
+            m = Mapper(secret=mapper.secret)
+            m.add(v, kind)
         try:
             raw = body[off:off + nbytes]
             text = raw.decode(enc)
-            rep = text.replace(val, mapper.pseudonym(val)).encode(enc)
+            rep = text.replace(val.strip(), m.pseudonym(val.strip())).encode(enc)
         except (UnicodeError, LookupError, KeyError):
             continue
         if len(rep) == nbytes and rep != raw:

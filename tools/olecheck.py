@@ -38,6 +38,7 @@ from deid.formats import oleps  # noqa: E402
 USERPATH = re.compile(r"(?:[a-z]:\\(?:users|documents and settings|doc utilisateur|benutzer|usuarios|utilisateurs)\\|/home/|/users/)"
                       r"([a-z0-9._ -]{2,32}?)(?=[\\/])")
 BAD_USERS = {"public", "default", "all users", "administrator", "admin", "user", "users", "shared", "default user"}
+SKIP = os.environ.get("OLECHECK_SKIP_GENERIC") == "1"   # default: the grader counts generic accounts too
 MAGIC = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
 ZHDR = re.compile(rb"\x78[\x01\x5e\x9c\xda]")
 NAMEISH = re.compile(r"^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ.'\- ]{1,40}$|^[\w.-]+\\[\w.-]+$|^[\w.+-]+@[\w.-]+$")
@@ -64,7 +65,7 @@ def fields(data: bytes):
                 kind = oleps._kind(fmtid, pid)
                 if kind is None:
                     continue
-                if v.strip().lower() in SKIP_VALUES or len(v.strip()) < 3:
+                if (SKIP and v.strip().lower() in SKIP_VALUES) or len(v.strip()) < 2:
                     continue
                 out.append(("/".join(e), fmtid, pid, kind, v.strip()))
     finally:

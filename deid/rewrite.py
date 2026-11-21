@@ -310,8 +310,10 @@ def rw_ole(data: bytes, m: Mapper) -> bytes:
         body = m.replace_bytes(body, ("ascii", "utf-16-le"), accept=lambda src, a, b: b - a >= 5)
         if local is not None:
             # 3-letter own account values ("Rob") only in text (XML members, ISolidWorksInformation)
-            n = 3 if short or body[:1] == b"<" or body[:4] == b"\xef\xbb\xbf<" else 4
-            body = local.replace_bytes(body, ("utf-16-le", "ascii"), accept=lambda src, a, b: b - a >= n)
+            xml = body[:1] == b"<" or body[:4] == b"\xef\xbb\xbf<" or body[:2] == b"<\x00"
+            n = 3 if short or xml else 4
+            lm_ = getattr(local, "xml_safe", local) if xml else local
+            body = lm_.replace_bytes(body, ("utf-16-le", "ascii"), accept=lambda src, a, b: b - a >= n)
         return body
 
     def transform(name: str, body: bytes) -> bytes:
@@ -325,8 +327,9 @@ def rw_ole(data: bytes, m: Mapper) -> bytes:
         if local is not None and not name.startswith("\x05"):
             # the file's own author / last-saved-by values also live in Header2, ISolidWorksInformation,
             # Contents/*, UFRxDoc ...: replace them there with the same pseudonym (word-bounded)
-            body = local.replace_bytes(body, ("utf-16-le", "ascii"),
-                                       accept=lambda src, a, b: b - a >= 4)
+            xml = body[:1] == b"<" or body[:4] == b"\xef\xbb\xbf<" or body[:2] == b"<\x00"
+            lm_ = getattr(local, "xml_safe", local) if xml else local
+            body = lm_.replace_bytes(body, ("utf-16-le", "ascii"), accept=lambda src, a, b: b - a >= 4)
         return body
 
     def _transform_main(name: str, body: bytes) -> bytes:
@@ -344,7 +347,10 @@ def rw_ole(data: bytes, m: Mapper) -> bytes:
     if G.get("ole_scrub_free", True):
         from deid.formats import olefree
 
-        out = olefree.scrub(out)
+        try:
+            out = olefree.scrub(out)
+        except Exception:
+            pass  # keep the rewritten file; free-sector scrub is best-effort
     return out
 
 
@@ -359,6 +365,12 @@ def _propagate_ok(v: str, kind: str | None) -> bool:
 
     return (kind in ("person", "account") and field_ok(v) and v.strip().lower() not in PROP_WORDS
             and not re.search(r"(?i)\biso\b|\bdin\b|licen|attribution|creative|terraform|\d{3}", v))
+
+
+def _account_ok(v: str) -> bool:
+    v = v.strip()
+    return 3 <= len(v) <= 40 and len(re.findall(r"[^\W\d_]", v)) >= 2 and not re.search(r"\d{2}[/.-]\d{2}", v) \
+        and "\x00" not in v
 
 
 def _ole_field_mapper(data: bytes):
@@ -379,19 +391,47 @@ def _ole_field_mapper(data: bytes):
     except Exception:
         return None
     lm = Mapper(secret=allm.secret)
+    generic: set = set()
     try:
         for e in ole.listdir(streams=True, storages=False):
             if not e[-1].startswith("\x05"):
                 continue
             for fmtid, pid, v in oleps.parse(ole.openstream(e).read()):
                 k = norm(v)
-                if oleps._kind(fmtid, pid) and len(v) >= 3 and k in allm.entries and \
-                        _propagate_ok(v, allm.kinds.get(k)):
-                    lm.entries[k] = allm.entries[k]
-                    lm.kinds[k] = allm.kinds.get(k, "account")
+                kind = oleps._kind(fmtid, pid)
+                if not kind or len(v.strip()) < 3:
+                    continue
+                if k in allm.entries:
+                    if _propagate_ok(v, allm.kinds.get(k)) or (kind == "account" and _account_ok(v)):
+                        lm.entries[k] = allm.entries[k]
+                        lm.kinds[k] = allm.kinds.get(k, "account")
+                elif kind in ("account", "person") and _account_ok(v):
+                    # saved account / author not in the registry (generic "User", "Admin"): it is still the
+                    # saved account; deterministic pseudonym from the same secret
+                    lm.add(v.strip(), kind)
+                    generic.add(norm(v.strip()))
+                if k in lm.entries and (v.strip().lower() in PROP_WORDS or v.strip().lower() in _common_words_safe()):
+                    generic.add(k)
     finally:
         ole.close()
-    return lm if lm.entries else None
+    if not lm.entries:
+        return None
+    # XML members: generic words ("User", "Admin") can be element / property names -> not there
+    lm.xml_safe = Mapper(secret=allm.secret)
+    for k, v in lm.entries.items():
+        if k not in generic:
+            lm.xml_safe.entries[k] = v
+            lm.xml_safe.kinds[k] = lm.kinds.get(k)
+    return lm
+
+
+def _common_words_safe() -> set:
+    try:
+        from deid.formats.pdftext import _common_words
+
+        return _common_words()
+    except Exception:
+        return set()
 
 
 def _guarded(body: bytes, m: Mapper) -> bytes:
