@@ -100,6 +100,20 @@ benennung zeichnung hinweis abmessungen toleranzen oberfläche disegnato control
 data scala foglio materiale descrizione quota tolleranze revisione dibujado revisado aprobado fecha
 escala hoja materiel matériau échelle feuille désignation nom projet drawings model models iso din ansi
 """.split())
+TECH_STOP |= set("""
+chamfer chamfers undim undimensioned geometr geometry workspace spacer spacers cuvette acetal copolymer
+impeller assemb assembl aproved approvd galvo recoater dehuller unmodelled proto quant permis stirling plade
+zchng arduino january february march april may june july august september october november december
+jan feb mar apr jun jul aug sep sept oct nov dec monday tuesday wednesday thursday friday russia canada
+london china germany france italy spain japan usa india europe kazan glencoe workshop prototype bearing
+bracket housing cover plate shaft gear motor mount holder washer bushing nozzle sensor frame
+projekt anhang zeichen skizzen bohrungen walze öffnen animationen kontrolliert geprüft gezeichnet
+änderungen änderung stückliste gesamtmasse volumenmodelle baugruppen explosionszeichnungen allgemeintoleranz
+""".split())
+GERMAN_SUFFIX = re.compile(r"(?:ung|ungen|platte|deckel|liste|masse|modell|modelle|zeichnung|zeichnungen|gruppe|"
+                           r"gruppen|teil|teile|kranz|fläche|bild|weise|toleranz|block|blech|rad|keit|heit|lich|"
+                           r"iert|ieren|schaft|stück|stange|welle|lager|halter|scheibe|schraube|mutter|feder|"
+                           r"gehäuse|rahmen|profil|winkel|platten|nen|chen)$")
 _COMMON: set | None = None
 
 
@@ -121,10 +135,17 @@ def _near_label_names(text: str) -> list[tuple[str, str]]:
     common = _common_words()
     out = []
     for lm in NEAR_LABEL_RX.finditer(text):
-        win = text[max(0, lm.start() - 90):lm.end() + 90]
+        a, b = max(0, lm.start() - 90), min(len(text), lm.end() + 90)
+        win = text[a:b]
         for m in NAME_NEAR_RX.finditer(win):
             w = m.group(1)
             lw = w.lower()
+            # skip words cut by the window edges
+            if (m.start() == 0 and a > 0 and text[a - 1].isalpha()) or \
+                    (m.end() == len(win) and b < len(text) and text[b].isalpha()):
+                continue
+            if GERMAN_SUFFIX.search(lw) and len(lw) > 7:
+                continue
             stems = {lw, lw.rstrip("s"), re.sub(r"(ed|ing|ly|es|er)$", "", lw), re.sub(r"(d|ing)$", "", lw)}
             if lw in TECH_STOP or lw in STOPWORDS or any(x in common for x in stems):
                 continue
