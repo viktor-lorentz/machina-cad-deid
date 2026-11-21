@@ -180,5 +180,48 @@ def main(argv):
     print(f"files {len(paths)} repos {len(repo_c)} repo-candidates {len(allc)} kept {len(keep)}")
 
 
+
+
+# ---- selection: stats -> clean project list ---------------------------------------------------------------------
+def _codeish(v):
+    return bool(re.search(r"[a-z][A-Z]|_|[A-Za-z]\d|\d[A-Za-z]|\+\+", v))
+
+
+def keep_value(v, src):
+    toks = split_name(v)
+    if not toks or re.fullmatch(r"[0-9a-f]{6,}", v.lower()) or len(v) < 3:
+        return False
+    nondict = [t for t in toks if t not in WORDS and t not in GENERIC and not t.isdigit() and not re.fullmatch(r"v\d+", t)]
+    words = re.findall(r"[A-Za-z][A-Za-z0-9]*", v)
+    if src == "label":
+        return bool(nondict) or _codeish(v)
+    if len(toks) == 1:
+        return bool(nondict) or _codeish(v)
+    if nondict or _codeish(v):
+        return True
+    # dictionary-only phrase: must look like a name (Title Case / ALL CAPS words), <= 3 words
+    return len(words) <= 3 and all(w[0].isupper() for w in words)
+
+
+def select(stats, out):
+    _load_words()
+    n = 0
+    with open(out, "w") as fh:
+        for l in open(stats, encoding="utf-8", errors="ignore"):
+            try:
+                cnt, reps, src, v = l.rstrip("\n").split("\t")
+            except ValueError:
+                continue
+            if keep_value(v, src):
+                fh.write(f"project\t{v}\n")
+                n += 1
+    return n
+
+
+if __name__ == "__main__" and sys.argv[1:2] == ["select"]:
+    print("selected", select(sys.argv[2], sys.argv[3]))
+    sys.exit(0)
+
+
 if __name__ == "__main__":
     main(sys.argv[1:])
