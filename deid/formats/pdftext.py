@@ -243,6 +243,10 @@ def _plain_camel(w: str) -> bool:
     return all(p in words or p in TECH_STOP or p in _CAMEL_OK or len(p) <= 1 for p in parts)
 
 
+def contacts_text(text: str) -> list[tuple[str, str]]:
+    return [(v, k) for v, k in harvest_text(text) if k in ("email", "phone", "url", "domain")]
+
+
 def harvest_text(text: str) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     for m in PROJECT_LABEL_RX.finditer(text):
@@ -339,9 +343,12 @@ def harvest(data: bytes, max_pages: int = 6, stem: str = "") -> list[tuple[str, 
         return out
     try:
         for i, page in enumerate(doc):
-            if i >= max_pages:
+            if i >= 40:
                 break
             t = page.get_text()
+            if i >= max_pages:  # deep pages: contact details only (no name heuristics in long manuals)
+                out += contacts_text(t)
+                continue
             out += harvest_text(t)
             if stem:
                 out += stem_codes(stem, re.sub(r"\s+", " ", t))
