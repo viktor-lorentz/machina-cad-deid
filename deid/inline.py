@@ -22,6 +22,7 @@ from collections import Counter
 from multiprocessing import Pool
 
 from deid import persons as P
+from deid.registry.pseudonym import norm
 
 _COMMON = None
 
@@ -203,8 +204,18 @@ def extend(allm, content, path=None):
         p = l.rstrip("\n").split("\t")
         if len(p) != 2 or not p[1]:
             continue
+        k = norm(p[1])
+        if k in allm.entries or k in content.entries:
+            continue                      # registry entry wins (keeps its path/rename semantics)
         allm.add(p[1], p[0])
         content.add(p[1], p[0])
+        # CONTENT-ONLY: never rename files/folders/stems (a5, a13); kinds drive every path rule in rewrite.py
+        for m in (allm, content):
+            if k in m.entries:
+                m.kinds[k] = "inline"
+        if not hasattr(content, "merged"):
+            content.merged = set()
+        content.merged.add(k)
         n += 1
     return n
 
