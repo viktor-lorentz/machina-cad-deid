@@ -243,8 +243,35 @@ def _plain_camel(w: str) -> bool:
     return all(p in words or p in TECH_STOP or p in _CAMEL_OK or len(p) <= 1 for p in parts)
 
 
+_STREET = r"(?:STREET|Street|ST\.|ROAD|Road|RD\.?|AVENUE|Avenue|AVE\.?|DRIVE|Drive|DR\.|LANE|Lane|WAY|Way|BOULEVARD|Boulevard|BLVD\.?|PLACE|Place|CRESCENT|Crescent)"
+ADDRESS_RX = re.compile(rf"(?<![\w.,-])(\d{{1,5}}[A-Za-z]?\s+(?:[A-Z][A-Za-z'-]+\s+){{1,3}}{_STREET}"
+                        rf"(?:[ \t]+(?!NEW\b|TEL\b|FAX\b|PHONE\b)[A-Z][A-Z]{{3,20}}\b)?)")
+INTL00_RX = re.compile(r"(?<![\d.])(00\d{1,3}[-\s]\d{1,4}[-\s]\d{5,8})(?![\d.])")
+COMPANY_UP_RX = re.compile(r"(?<![A-Za-z])((?:[A-Z][A-Z&.-]{1,20}\s+){1,3}(?:DRAUGHTING|DRAFTING|ENGINEERING|DESIGN)"
+                           r"\s+(?:SERVICES|LTD\.?|LIMITED|CO\.?))(?![A-Za-z])")
+ADV_LIGO_RX = re.compile(r"\b(Advanced LIGO|ADVANCED LIGO|Advanced Ligo)\b")
+
+
+def address_text(text: str) -> list[tuple[str, str]]:
+    out = []
+    for m in ADDRESS_RX.finditer(text):
+        words = re.findall(r"[A-Za-z'-]+", m.group(1))[:-1]
+        # street name must hold a non-dictionary word (no "3 HOLES ON MAIN ROAD" drawing notes)
+        if any(w.lower() not in _common_words() and w.lower() not in TECH_STOP for w in words):
+            out.append((m.group(1), "address"))
+    out += [(m.group(1), "phone") for m in INTL00_RX.finditer(text)]
+    for m in COMPANY_UP_RX.finditer(text):
+        ws = re.sub(r"\s+", " ", m.group(1)).split(" ")
+        while ws and (ws[0].lower() in _common_words() or ws[0].lower() in TECH_STOP or ws[0].lower() in STOPWORDS):
+            ws.pop(0)
+        if len(ws) >= 3:
+            out.append((" ".join(ws), "company"))
+    out += [(m.group(1), "project") for m in ADV_LIGO_RX.finditer(text)]
+    return out
+
+
 def contacts_text(text: str) -> list[tuple[str, str]]:
-    return [(v, k) for v, k in harvest_text(text) if k in ("email", "phone", "url", "domain")]
+    return [(v, k) for v, k in harvest_text(text) if k in ("email", "phone", "url", "domain")] + address_text(text)
 
 
 FULLNAME_RX = re.compile(r"(?<![\w.])([A-ZÀ-Ý][a-zà-ÿ]{2,14})[ \t]+((?:[A-ZÀ-Ý][a-zà-ÿ]{1,20}[ \t]+)?"
@@ -389,6 +416,7 @@ def harvest(data: bytes, max_pages: int = 6, stem: str = "") -> list[tuple[str, 
                 continue
             out += harvest_text(t)
             out += family_codes(t)
+            out += address_text(t)
             if stem:
                 out += stem_codes(stem, re.sub(r"\s+", " ", t))
     except Exception:
