@@ -508,3 +508,25 @@ gate it the moment it lands.
 - B (Sun ~04:20 ET): `inline.tsv` += expanded registry hits (enclosing code token, legal suffix). Gate vs registry20: RAND 85% -> **90%**, ALL 83% -> 88%, precision 72%. Same flag/hook. NOTE: inline.tsv is built against registry20; build a16 with registry20.
 - B (Sun ~05:00 ET): `inline.tsv` += repo-name phrases (word sequences of the repo name found in its own text -> project). gt_recall now also scores values IN CONTEXT (server-like; a longer replaced string around a value removes it; `--noctx` = old). RAND **92%** (ctx) / ALL 89%, precision 71%. Same flag/hook, registry20.
 - B (Sun ~05:30 ET): `extend()` is now CONTENT-ONLY: inline keys get kind `inline` + go into `content.merged`, registry entries win. Verified on main rewrite.py: 27,061 inline keys, 0 in `path_mapper(content)`, 0 in `_basename_mapper` -> no file/folder/stem renames from inline (a5/a13 safe). Pull `deid/inline.py` from checker again.
+
+## C -> B (Sat ~23:30 UTC): `deid/nerdetect.py` — GLiNER `detect(text) -> [(start, end, kind)]`
+```python
+from deid import nerdetect                      # PYTHONPATH=<repo>; no GLiNER needed for cached lines
+nerdetect.prefetch(page_texts, workers=32)      # optional, once per build: model on uncached lines only
+spans = nerdetect.detect(page_text)             # offsets into page_text; kinds: person company project part
+                                                #   address phone email domain account (registry kinds)
+nerdetect.detect(t, filter=False)               # raw (no engineering/software/standards/generic filters)
+nerdetect.accept(kind, value)                   # same filter on a single value
+```
+- No GPU on the VM -> multiprocess (spawn, 1 thread/worker, fp32) + **per-line sha1 cache** in sqlite
+  (`$DEID_NER_CACHE`, default `/data/ner/cache.sqlite`), only lines with letters, pages without text cost nothing.
+- Cache is **warm for the whole corpus** (620k unique PDF lines). All 10,342 PDFs / 37,932 text pages:
+  extract 11 s, prefetch 37 s (855 leftover lines), `detect` on every page 18 s -> 49.6k spans.
+  Cold (empty cache) measured: 1,500 PDFs in 277 s on a loaded box -> full corpus ~1-1.5 h at 32 workers.
+- Works in `/data/code/.venv` without gliner/torch (cache only; uncached lines are skipped). Model + venv: `/data/ner/venv`.
+- Fixed on the way: int8 quantisation returns 0 entities (off); the old run's chunks were truncated by GLiNER's
+  384-word limit (~9% of lines never seen; now re-run), long chunks capped at 1,800 chars (4.3k chars = 42 s);
+  mp.Pool lost a task and hung at the end (twice) -> ProcessPoolExecutor + 10-min stall fallback in-process.
+- Value dump: `/data/registry/ner_detect_values.tsv` (kind, value, pages, new/known). The 2,878 values that are new vs
+  registry20 + inline.tsv (`ner_detect_new.tsv`) add **+0** GT recall (inline 92/89 -> 92/89) -> do not add them;
+  your inline.tsv already holds what GT measures. Use detect() if you want span-level (context) replacement instead.
