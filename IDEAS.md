@@ -89,3 +89,11 @@ Gaps (max-ours): PDF removal 214, PDF consistency 160, non-collision 96, drawing
 - harvest14 adds addresses / 00-intl phones / DRAUGHTING-ENGINEERING firms / Advanced LIGO.
 - rewrite coverage: only ~1% of PDFs with registry hits stay unreduced (6/467), 7% partial -> registry recall is the lever.
 - Last submit by 5:00 AM PT Sunday (grading up to 3 h).
+
+## Sat 15:00 ET
+- a10 = 562 (= a7): SW rewrite caused the packaging drop. a11 (registry13) OOM-killed mid-build at 19:07 UTC (NER pass + gate
+  + builds together) -> skipped; a12 = registry14v (RAND 75% / ALL 59%) building, upload queued to start at READY.
+- registry15 = registry14 + project spelling variants (27, e.g. "BCN3D Moveo") + vendor-all: ALL 59%, projects 41 -> 45%. Gate PASS.
+  -> attempt 13 = registry15 + C's NER candidates (gated).
+- next harvest rules: German "ddddd City" postcodes, lowercase legal suffixes (s.r.o., s.r.l., spol.), "LIGO LABORATORY",
+  surname author lists ("Taylor, Moore, and Armstrong"). Don't run >1 build + NER at once (OOM).
