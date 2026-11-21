@@ -219,6 +219,8 @@ iphone ipad macos javascript typescript linkedin facebook wordpress sketchup inv
 coreldraw photoshop illustrator acrobat adobe microsoft openoffice libreoffice microstation creo
 catia nx siemens fusion autodesk solidedge spaceclaim designspark easyeda altium eagle orcad
 mathworks matlab simulink ansys comsol abaqus paraview blender meshlab cura prusaslicer simplify3d
+tplh tphl tpd hene subghz noir compactpci cia402 ice40up5k ultipanel mosfet igbt ethercat canopen modbus
+profinet devicenet bluetooth zigbee lorawan wifi pcie mipi hdmi displayport thunderbolt
 """.split())
 
 
