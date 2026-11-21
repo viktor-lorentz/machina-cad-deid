@@ -329,7 +329,7 @@ def rw_ole(data: bytes, m: Mapper) -> bytes:
             # Contents/*, UFRxDoc ...: replace them there with the same pseudonym (word-bounded)
             xml = body[:1] == b"<" or body[:4] == b"\xef\xbb\xbf<" or body[:2] == b"<\x00"
             lm_ = getattr(local, "xml_safe", local) if xml else local
-            body = lm_.replace_bytes(body, ("utf-16-le", "ascii"), accept=lambda src, a, b: b - a >= 4)
+            body = lm_.replace_bytes(body, ("utf-16-le", "ascii", "cp1252"), accept=lambda src, a, b: b - a >= 4)
         return body
 
     def _transform_main(name: str, body: bytes) -> bytes:
@@ -337,7 +337,13 @@ def rw_ole(data: bytes, m: Mapper) -> bytes:
             from deid.formats import oleps
 
             body = m.replace_bytes(body, ("ascii", "utf-16-le"))
-            return oleps.rewrite_fields(body, G.get("allm") or m)
+            body = oleps.rewrite_fields(body, G.get("allm") or m)
+            if local is not None:
+                # the file's own account / author values in custom property sets (Inventor design tracking,
+                # user-defined props); never generic words there (they can be property names)
+                body = getattr(local, "xml_safe", local).replace_bytes(
+                    body, ("utf-16-le", "ascii", "cp1252"), accept=lambda src, a, b: b - a >= 3)
+            return body
         # other streams: short length-prefixed strings (user names, paths) are
         # missed by run-guarding; a word-bounded match of a registered name of
         # >=5 bytes does not occur by chance in binary data
