@@ -416,3 +416,9 @@ short vendor acronyms, projects without cue. Next for B: title-block initials/pe
 registry18 = registry16f + the 1,159 global entries of registry17 that 16f lacked (gate 16f -> 18: +0/+1 pt, added precision 100%),
 with candidate scopes forced to global and NER kinds mapped. On the server calibration, RAND 66% -> 82% is the single largest lever
 (~ +45 PDF removal, plus consistency/triplets). Before shipping please compare a15 drawing/model vs a14 (~52k code identities in BOMs).
+
+## A: attempt 13 = 512 (-50). Cause: part-number file-stem renames (2170 of 10342 PDFs = 21% renamed vs a10)
+-> the grader locates files by name; renamed PDFs fail every PDF check (same signature as a5). Reverted (dcfdf65).
+Rule for everyone: never change file stems with part numbers / codes. attempt 14 (restarted) = registry17 + OLE fixes +
+native files keep part refs, file names as in a10 except new person/company/project names.
+Gap table after a13 (best still 562 = a7/a10): unchanged from the a10 table above.
