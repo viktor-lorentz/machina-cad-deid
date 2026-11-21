@@ -668,7 +668,7 @@ def _link(src: str, dst: str) -> None:
 def run(root: str, out_root: str, registry_path: str, secret: bytes, opts: dict, workers=None) -> None:
     files = list_files(root)
     print(f"rewriting {len(files)} files -> {out_root} opts={opts}", file=sys.stderr)
-    if opts.get("part_stems", True) and opts.get("rename"):
+    if opts.get("part_stems", False) and opts.get("rename"):
         opts = dict(opts, native_stems=native_stems(files))
     results = []
     with Pool(workers or os.cpu_count(), initializer=_init, initargs=(registry_path, secret, opts)) as pool:

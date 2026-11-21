@@ -46,3 +46,10 @@ drops those from code/ with the source kept exact.
 ## Attempt 10 — 562 (BB-BBCA09DC, Sat 1:46 PM)
 registry10 (= a7) + swx off + propagation person/account only + code/ without notes/tests.
 Identical to a7 in every category (packaging 5). => the a8/a9 packaging drop (5 -> 2) came from the SW2015 rewrite, not code/.
+
+## Attempt 13 — 512 (BB-90430234, Sat 3:49 PM)
+registry15 + part-number file-stem renames (non-native) + native files keep part refs + multi-line STEP strings.
+leak 8 · consistency 4 · distinct 2 · relationships 11 · engineering 10 · OLE hidden 4 · packaging 3 (-2) ·
+PDF removal 163 (-12) · PDF consistency 68 (-21) · triplets 21 (-8) · drawing/model 160 (-4) · OLE 4/4/25/25
+Verdict: part-number stem renames break file location (same signature as a5: renaming by part numbers). Reverted
+(part_stems off). Lesson: NEVER rename file stems by part numbers; the grader locates files by name.
