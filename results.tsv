@@ -10,3 +10,4 @@ ebde0e6	985	yes: attempt-2 receipt BB-62DF6234 (Sat 02:13 ET)	266	attempt-2: + p
 8	5c898e9	BB-9ACD7430	553	registry11 (+SW docProps harvest); SW2015+ section rewrite (CRC, padded); field_ok; propagation person/account only; local 980; strict clean 0.741
 9	5c898e9	BB-0501A3F6	519	a8 + DEID_KEEP_FILE_CODES (part codes naming files kept; parts 4901->3161) — A/B vs a8 for drawing/model; local 982; strict clean 0.767
 10	3a487b0	BB-BBCA09DC	562	registry10 (= a7) + swx off + propagation person/account only + clean code/ (no notes/tests); paths identical to a7; local 981; strict clean 0.750
+13	9b425d0	BB-90430234	pending	registry15 (r14: family codes, addresses, phones, firms + vendor-all + project variants; RAND 75% old sample) + drawing/model: native files keep part refs (66->1/600), part stems renamed like drawing text (LOST 197->81), multi-line STEP strings; local 974
