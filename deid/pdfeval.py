@@ -35,10 +35,18 @@ _TEXTY = {"txt", "md", "csv", "xml", "json", "html", "htm", "stp", "step", "igs"
           "urdf", "sdf", "yaml", "yml", "ini", "cfg", "svg", "tex", "log"}
 
 
+# registry entries that are not identities (standards bodies, generic words): never counted as leaks
+NON_IDENTITY = {"asme", "astm", "ansi", "iso", "din", "iec", "ieee", "nist", "jis", "bsi", "sae", "nema", "ul", "csa",
+                "unthreaded", "xmlns", "multimeter", "the property of", "steam engine"}
+
+
 def _init(reg, secret):
     from deid.rewrite import load_mappers
 
     _, G["m"] = load_mappers(reg, secret)  # content (global-scope) identities: what content rewriting applies
+    for k in [k for k in G["m"].entries if k in NON_IDENTITY]:
+        del G["m"].entries[k]
+    G["m"]._auto.clear()
     from deid.detect import Explainer
 
     G["ex"] = Explainer(pseudonyms=G["m"].entries.values())
@@ -257,7 +265,7 @@ def main(argv=None):
     by_rep = defaultdict(set)
     for k, c in seen.items():
         for v in c:
-            by_rep[v].add(k)
+            by_rep[v].add(_norm(k))  # spacing/punctuation variants of one identity are the same identity
     shared = {v: ks for v, ks in by_rep.items() if len(ks) > 1}
     for v, ks in list(shared.items())[:2000]:
         fails.append(("collision", "", 0, " | ".join(sorted(ks))[:200], v))
