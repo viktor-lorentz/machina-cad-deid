@@ -162,24 +162,35 @@ def rewrite(data: bytes, mapper) -> bytes:
         if not text.strip():
             continue
         raw = text.encode("utf-8", "replace")
-        hits = mapper.find(raw, "ascii")
+        # newline -> space keeps byte positions, so names wrapped over lines still match
+        flat = raw.replace(b"\n", b" ").replace(b"\r", b" ").replace(b"\t", b" ")
+        hits = mapper.find(flat, "ascii")
         if not hits:
             continue
         placements = []
         seen = set()
         for s, e, key in hits:
             try:
-                occ = raw[s:e].decode("utf-8")
-                rep = mapper.pseudonym(occ)
+                occ_raw = raw[s:e].decode("utf-8")
+                rep = mapper.pseudonym(flat[s:e].decode("utf-8"))
             except (UnicodeError, KeyError):
                 continue
-            if occ in seen:
+            if occ_raw in seen:
                 continue
-            seen.add(occ)
-            for rect in page.search_for(occ):
-                size = _font_size_at(page, rect) or max(4.0, rect.height * 0.8)
-                placements.append((rect, rep, size))
-                page.add_redact_annot(rect, fill=None, cross_out=False)
+            seen.add(occ_raw)
+            # split at line breaks; the same-length pseudonym is split at the same offsets
+            parts, pos = [], 0
+            for seg in re.split(r"([\r\n\t]+)", occ_raw):
+                if seg and not re.fullmatch(r"[\r\n\t]+", seg):
+                    parts.append((seg, rep[pos:pos + len(seg)]))
+                pos += len(seg)
+            if len(parts) > 1:
+                parts = [(a.strip(), b.strip()) for a, b in parts if len(a.strip()) >= 3]
+            for seg, seg_rep in parts:
+                for rect in page.search_for(seg):
+                    size = _font_size_at(page, rect) or max(4.0, rect.height * 0.8)
+                    placements.append((rect, seg_rep, size))
+                    page.add_redact_annot(rect, fill=None, cross_out=False)
         if not placements:
             continue
         page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE,
