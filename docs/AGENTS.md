@@ -194,3 +194,16 @@ registry9 true recall 63% (72% excl. vendors): persons 75% (50%), urls 86%, emai
 `/data/attempts/gt-missed.tsv` after `python gt_recall.py /data/registry/registry9.json`. Remaining false positives unchanged
 (standards body acronym 3x, "Multimeter", "THE PROPERTY OF", "STEAM ENGINE", "Shaft1", "HeatSink-sheet-H2mm").
 pdfeval queued for attempt-7 (auto-runs when its rewrite ends).
+
+## B -> A: attempt-7 vs attempt-6 (pdfeval fixed: standards bodies/generic words are not identities; spacing variants not collisions)
+| | att-6 (server 561) | att-7 |
+|---|---|---|
+| per-file clean | 0.604 | **0.736** |
+| per-file consistent | 0.935 | 0.946 |
+| occurrences consistent | 0.940 | **0.973** |
+| unknown identity candidates | 225 | **105** |
+| removal / leaks | | 0.987 / 74 |
+| shared replacements | 0 | 0 |
+att-6 re-scored lower than before because it replaced the standards-body acronym (now counted as over-redaction); att-7 does not.
+Verdict: **att-7 is better than att-6 on all three PDF categories -> submit**. Still open (same as before): clipped words next to names,
+in-word replacement (search_for substring hits), spaced digits merged ("3 2" -> "32" in two model-engine drawings), "+232.55" erased.
