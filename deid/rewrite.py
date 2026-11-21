@@ -44,11 +44,14 @@ def load_mappers(registry_path: str, secret: bytes) -> tuple[Mapper, Mapper]:
         allm.add(r["value"], r["kind"])
     from deid.registry.pseudonym import norm
 
+    content.merged = set()
     for r in reg["identities"]:
         k = norm(r["value"])
         if r["scope"] == "global" and k in allm.entries:
             content.entries[k] = allm.entries[k]
             content.kinds[k] = r["kind"]
+            if r.get("source"):
+                content.merged.add(k)  # merged candidate lists (vendors / NER / typeharvest): content only
     return allm, content
 
 
@@ -58,8 +61,10 @@ def path_mapper(content: Mapper) -> Mapper:
     so renaming part files breaks drawing/model links (attempt 5: 118 -> 2023 native renames,
     drawing/model 175 -> 154)."""
     pm = Mapper(secret=content.secret)
+    merged = getattr(content, "merged", set())
     for k, v in content.entries.items():
-        if content.kinds.get(k) != "part":
+        # file/folder names: no part numbers, no merged vendor/NER names (a13: renamed files are not found)
+        if content.kinds.get(k) != "part" and k not in merged:
             pm.entries[k] = v
             pm.kinds[k] = content.kinds.get(k)
     return pm
@@ -120,18 +125,20 @@ def map_path(rel: str, allm: Mapper, content: Mapper, rename: bool) -> str:
         return rel
     parts = rel.split("/")
     out = []
+    merged = getattr(G.get("content"), "merged", set())
     for i, seg in enumerate(parts):
         new = seg
         if i == 2 and parts[0] == "sources" and parts[1] in ("github", "gitlab"):
             bits = seg.split("__")
-            new = "__".join(allm.pseudonym(b) if b and b.lower() in allm.entries and not
+            new = "__".join(allm.pseudonym(b) if b and b.lower() in allm.entries and b.lower() not in merged and not
                             b.lower().startswith("gitlab.") else b for b in bits)
         elif i == 2 and parts[0] == "sources" and parts[1] in ("web", "catalog"):
-            new = allm.pseudonym(seg) if seg.lower() in allm.entries else seg
+            new = allm.pseudonym(seg) if seg.lower() in allm.entries and seg.lower() not in merged else seg
         elif i == 1 and parts[0] == "archives":
             stem, dot, ext = seg.rpartition(".")
             bits = stem.split("__")
-            new = "__".join(allm.pseudonym(b) if b.lower() in allm.entries else b for b in bits) + dot + ext
+            new = "__".join(allm.pseudonym(b) if b.lower() in allm.entries and b.lower() not in merged else b
+                            for b in bits) + dot + ext
         if i == len(parts) - 1 and "." in new:
             stem, dot, ext = new.rpartition(".")
             # the extension is never renamed; file stems only take person/account/email/domain/phone renames:
