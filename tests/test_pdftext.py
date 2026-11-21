@@ -66,3 +66,26 @@ def test_redaction_spares_tightly_spaced_neighbour_lines():
         assert keep in t
     assert "HOWARD" not in t and "Magnus" not in t
     assert m.pseudonym("Magnus Kjer") in t
+
+
+def test_oleps_field_rewrite_cp1252_same_length():
+    import struct
+    import uuid
+    from deid.formats import oleps
+    from deid.registry.pseudonym import Mapper
+
+    # minimal SummaryInformation property set: codepage 1252 + author "Séba"
+    val = "Séba".encode("cp1252") + b"\x00"
+    props = [(1, struct.pack("<IH2x", 2, 1252)), (4, struct.pack("<II", 30, len(val)) + val + b"\x00" * (-len(val) % 4))]
+    hdr_len = 8 + 8 * len(props)
+    offs, blob = [], b""
+    for pid, data in props:
+        offs.append((pid, hdr_len + len(blob)))
+        blob += data
+    section = struct.pack("<II", hdr_len + len(blob), len(props)) + b"".join(struct.pack("<II", p, o) for p, o in offs) + blob
+    body = struct.pack("<HHI16sI", 0xFFFE, 0, 0, b"\x00" * 16, 1) + uuid.UUID(oleps.SUMMARY).bytes_le + struct.pack("<I", 48) + section
+    m = Mapper()
+    m.add("Séba", "account")
+    out = oleps.rewrite_fields(body, m)
+    assert len(out) == len(body) and out != body
+    assert [v for _, pid, v in oleps.parse(out) if pid == 4] == [m.pseudonym("Séba")]

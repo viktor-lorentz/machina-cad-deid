@@ -225,7 +225,10 @@ def rw_ole(data: bytes, m: Mapper) -> bytes:
 
     def transform(name: str, body: bytes) -> bytes:
         if name.startswith("\x05"):
-            return m.replace_bytes(body, ("ascii", "utf-16-le"))
+            from deid.formats import oleps
+
+            body = m.replace_bytes(body, ("ascii", "utf-16-le"))
+            return oleps.rewrite_fields(body, G.get("allm") or m)
         # other streams: short length-prefixed strings (user names, paths) are
         # missed by run-guarding; a word-bounded match of a registered name of
         # >=5 bytes does not occur by chance in binary data

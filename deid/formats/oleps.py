@@ -29,8 +29,9 @@ INV_PEOPLE_PIDS = {10: "person",   # Checked By
 INV_CONTROL = "d861fb30-6a2b-11d1-9e98-0060b03c1ca6"
 
 
-def parse(body: bytes) -> list[tuple[str, int, str]]:
-    out: list[tuple[str, int, str]] = []
+def parse(body: bytes, positions: bool = False) -> list:
+    """(fmtid, pid, value) for every string property; with positions=True also (offset, nbytes, codec)."""
+    out: list = []
     try:
         if len(body) < 48:
             return out
@@ -58,18 +59,56 @@ def parse(body: bytes) -> list[tuple[str, int, str]]:
                     try:
                         s = raw.decode(enc, "replace")
                     except LookupError:
+                        enc = "latin-1"
                         s = raw.decode("latin-1")
+                    nbytes = cnt
                 elif vt == 31:  # VT_LPWSTR
                     cnt = struct.unpack_from("<I", body, p + 4)[0]
-                    s = body[p + 8:p + 8 + 2 * cnt].decode("utf-16-le", "replace")
+                    enc, nbytes = "utf-16-le", 2 * cnt
+                    s = body[p + 8:p + 8 + nbytes].decode("utf-16-le", "replace")
                 else:
                     continue
                 s = s.strip("\x00 ").strip()
                 if s:
-                    out.append((fmtid, pid, s))
+                    out.append((fmtid, pid, s, (p + 8, nbytes, enc)) if positions else (fmtid, pid, s))
     except (struct.error, ValueError):
         pass
     return out
+
+
+def _kind(fmtid: str, pid: int) -> str | None:
+    kind = IDENTITY_PIDS.get((fmtid, pid))
+    if kind is None and fmtid == INV_DESIGN_TRACKING:
+        kind = INV_PEOPLE_PIDS.get(pid)
+    if kind is None and fmtid.startswith("d861fb30") and pid == 16:
+        kind = "account"
+    if kind is None and fmtid.startswith("3d38de39"):  # Inventor Summary Information
+        kind = {4: "person", 8: "account"}.get(pid)
+    if kind is None and fmtid.startswith("8cf58000"):  # Inventor Document Summary Information
+        kind = {14: "person", 15: "company"}.get(pid)
+    return kind
+
+
+def rewrite_fields(body: bytes, mapper) -> bytes:
+    """Same-length pseudonymisation of identity fields (author, last saved by, ...) in one
+    property-set stream, using the stream's own code page (cp1252 accents included)."""
+    from deid.registry.pseudonym import norm
+
+    buf = None
+    for fmtid, pid, val, (off, nbytes, enc) in parse(body, positions=True):
+        if not _kind(fmtid, pid) or norm(val) not in mapper.entries:
+            continue
+        try:
+            raw = body[off:off + nbytes]
+            text = raw.decode(enc)
+            rep = text.replace(val, mapper.pseudonym(val)).encode(enc)
+        except (UnicodeError, LookupError, KeyError):
+            continue
+        if len(rep) == nbytes and rep != raw:
+            if buf is None:
+                buf = bytearray(body)
+            buf[off:off + nbytes] = rep
+    return bytes(buf) if buf is not None else body
 
 
 def harvest(data: bytes) -> list[tuple[str, str]]:
@@ -89,13 +128,9 @@ def harvest(data: bytes) -> list[tuple[str, str]]:
             except Exception:
                 continue
             for fmtid, pid, s in parse(body):
-                kind = IDENTITY_PIDS.get((fmtid, pid))
-                if kind is None and fmtid == INV_DESIGN_TRACKING:
-                    kind = INV_PEOPLE_PIDS.get(pid)
-                if kind is None and fmtid.startswith("d861fb30") and pid == 16:
-                    kind = "account"
+                kind = _kind(fmtid, pid)
                 if kind:
-                    out.append((s, kind))
+                    out.append((s, kind + "_field"))
     finally:
         ole.close()
     return out

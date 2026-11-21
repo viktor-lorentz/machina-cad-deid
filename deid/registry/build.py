@@ -178,6 +178,7 @@ def build(candidates_path: str, out_path: str) -> dict:
     data = json.loads(Path(candidates_path).read_text())
     words = load_words()
     reg: dict[str, dict] = {}
+    field_rows = [r for r in data["candidates"] if r["kind"].endswith("_field")]
     for row in data["candidates"]:
         if row["kind"] == "person_near":
             # surname found near a title-block label: keep only project-local words
@@ -188,6 +189,12 @@ def build(candidates_path: str, out_path: str) -> dict:
             if row.get("repos", 0) > 5 or not re.search(r"[a-z]", row["value"], re.I) or not near_word_ok(last):
                 continue
             row = dict(row, kind="person")
+        field_kind = None
+        if row["kind"].endswith("_field"):
+            # explicit identity field (OLE author / last saved by): always pseudonymised in
+            # that field, even when the value is a generic or common word
+            field_kind = row["kind"][:-6]
+            row = dict(row, kind=field_kind)
         for value, kind in expand(row["value"], row["kind"]):
             v = re.sub(r"\s+", " ", clean(value))
             low = v.lower()
@@ -219,6 +226,10 @@ def build(candidates_path: str, out_path: str) -> dict:
             if prev is None or (prev["scope"] == "path" and scope == "global"):
                 reg[low] = {"value": v, "kind": kind, "scope": scope,
                             "files": row["files"] if prev is None else max(prev["files"], row["files"])}
+    for row in field_rows:
+        v = re.sub(r"\s+", " ", clean(row["value"]))
+        if v and v.lower() not in reg and alnum_len(v) >= 2 and len(v) <= 80 and not PLACEHOLDER.search(v):
+            reg[v.lower()] = {"value": v, "kind": row["kind"][:-6], "scope": "field", "files": row["files"]}
     out = {"identities": sorted(reg.values(), key=lambda r: -r["files"]),
            "defects": data.get("defects", {})}
     Path(out_path).write_text(json.dumps(out, indent=1))
