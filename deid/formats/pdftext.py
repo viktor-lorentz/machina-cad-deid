@@ -333,6 +333,32 @@ def harvest_text(text: str) -> list[tuple[str, str]]:
     return [(v, k) for v, k in out if v]
 
 
+FAMILY_NUM_RX = re.compile(r"(?<![A-Za-z0-9_.-])([A-Z0-9][A-Z0-9_]{3,15}(?:-[A-Z0-9]{1,8}){0,3})-{1,2}(\d{2,3})(?=[-_ \t\n]|$)")
+
+
+def family_codes(text: str) -> list[tuple[str, str]]:
+    """Parts-list families in one document: (a) upper-case code chains sharing their prefix
+    (first two segments) with >=2 other chains, e.g. FD-JL-PCBA-MB / -BB-N / -BB-S;
+    (b) a prefix followed by -NN / --NN item numbers >=3 times, e.g. 30DOSTE--01, --02, --03."""
+    out: list[tuple[str, str]] = []
+    chains = {m.group(1) for m in CODECHAIN_RX.finditer(text)}
+    fam: dict[str, set] = {}
+    for c in chains:
+        segs = re.split(r"[-_.]", c)
+        if len(segs) >= 3:
+            fam.setdefault("-".join(segs[:2]), set()).add(c)
+    for pre, mem in fam.items():
+        if len(mem) >= 3 and re.search(r"[A-Z]{2}", pre):
+            out += [(m, "codefamily") for m in mem]
+    nums: dict[str, set] = {}
+    for m in FAMILY_NUM_RX.finditer(text):
+        nums.setdefault(m.group(1), set()).add(m.group(2))
+    for pre, ns in nums.items():
+        if len(ns) >= 3 and re.search(r"[A-Z]{2}", pre):
+            out.append((pre, "codefamily"))
+    return out
+
+
 def stem_codes(stem: str, text: str) -> list[tuple[str, str]]:
     """The drawing's own file-name stem (or its code core) printed in its title block."""
     from deid.harvest import part_numbers
@@ -362,6 +388,7 @@ def harvest(data: bytes, max_pages: int = 6, stem: str = "") -> list[tuple[str, 
                 out += contacts_text(t)
                 continue
             out += harvest_text(t)
+            out += family_codes(t)
             if stem:
                 out += stem_codes(stem, re.sub(r"\s+", " ", t))
     except Exception:

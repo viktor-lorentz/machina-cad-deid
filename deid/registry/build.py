@@ -320,6 +320,13 @@ def build(candidates_path: str, out_path: str) -> dict:
             if row.get("repos", 0) > 5 or sur in TECH_STOP or sur in _common_words():
                 continue
             row = dict(row, kind="person")
+        if row["kind"] == "codefamily":
+            # parts-list family codes (no digit required): project-local, not standards / signals
+            v0 = row["value"]
+            if row.get("repos", 0) > 2 or STANDARD_CODE.search(v0) or _is_signal_name(v0) or len(v0) < 5 \
+                    or not v0.isascii() or v0.lower() in FORMAT_WORDS or os.environ.get("DEID_PARTS", "smart") == "none":
+                continue
+            row = dict(row, kind="part")
         if row["kind"] == "codechain":
             # upper-case code chains printed in PDFs: keep project-local ones that recur
             if row.get("repos", 0) > 2 or STANDARD_CODE.search(row["value"]):
