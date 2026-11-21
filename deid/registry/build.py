@@ -198,7 +198,11 @@ def build(candidates_path: str, out_path: str) -> dict:
             if row.get("repos", 0) > 5 or not re.search(r"[a-z]", row["value"], re.I) or not near_word_ok(last):
                 continue
             row = dict(row, kind="person")
-        if row["kind"] == "partno":
+        if row["kind"] in ("partno", "dwgno"):
+            # DEID_PARTS: none (default) | labels (PDF drawing-number labels only) | all
+            mode = os.environ.get("DEID_PARTS", "none")
+            if mode == "none" or (mode == "labels" and row["kind"] != "dwgno"):
+                continue
             # identifying part / document numbers: project-local codes only
             v0 = row["value"]
             if row.get("repos", 0) > 5 or STANDARD_CODE.search(v0) or re.fullmatch(r"(?i)v?\d+([._]\d+)+[a-z]?", v0):

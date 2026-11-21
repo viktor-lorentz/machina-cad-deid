@@ -193,7 +193,7 @@ def harvest_text(text: str) -> list[tuple[str, str]]:
     for m in DWGNO_RX.finditer(text):
         v = m.group(1).strip("-_.")
         if re.search(r"\d", v) and re.search(r"[A-Za-z]", v) and len(re.findall(r"\d", v)) >= 3:
-            out.append((v, "partno"))
+            out.append((v, "dwgno"))
     for m in EMAIL_RX.finditer(text):
         out.append((m.group(0), "email"))
     for m in URL_RX.finditer(text):
