@@ -154,7 +154,7 @@ def main(argv):
 EXCL2 = [re.compile(x, re.I) for x in (
     r"^\d+\s*awg$", r"^\d+\s*-?pins?$", r"^\d+p$", r"^UN[CFE]?-?\d", r"^\d+-UN[CFE]", r"^R\.\d", r"^[a-z]\d+\.\d+$", r"^AP2\d\d$", r"^AP24\d",
     r"^(?:LQFP|TQFP|QFN|DFN|SOIC|SOP|SOT|TSSOP|SSOP|MSOP|DIP|PDIP|BGA|LGA|SMD|TO|SC|SOD|DO|MELF|QFP|PLCC|WLCSP|HTSSOP|VQFN|UQFN)-?\d",
-    r"_P\d", r"^\d{1,3}-\d{1,3}$", r"^\d{3,5}-[a-z]{1,2}$", r"^Y14\.", r"^\d+(?:[.,]\d+)?(?:mm|in)?[x×]\d", r"^(?:CC|BY|SA|NC)-",
+    r"_P\d", r"^\d{1,3}-\d{1,3}$", r"^\d{3,5}-[a-z]{1,2}$", r"^Y14\.", r"^\d+(?:[.,]\d+)?(?:mm|in)?[x×]\d", r"^(?:CC-BY|BY-SA|BY-NC|NC-SA|NC-ND|BY-ND|CC0)",
     r"^(?:AISI|EN|AW|AL|SS|ST)\d", r"^\d+(?:[.,]\d+)?(?:mm|cm|kg|nm|uf|nf|pf|mh|uh|kohm|ohm|k|r|v|a|w|mw)$", r"^(?:rev|ver|v)[\-_.]?\d",
     r"^(?:sheet|page|fig|detail|section|view|item|step|part|no|nr)[\-_.]?\d", r"^\d+(?:st|nd|rd|th)$", r"^[a-z]{1,2}\d{1,2}$",
     r"^(?:m|g|r|w|t|h|n|c|p)\d+(?:[.,]\d+)?$", r"^\d+[a-z]$", r"^iso", r"^din", r"^gb\d", r"^jis",
