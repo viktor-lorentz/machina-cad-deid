@@ -119,6 +119,9 @@ COMPONENT_VENDORS = re.compile(r"alibre|pcbnew|te connectivity|stmicro|mouser|sn
 
 
 NAME_STOP = set("""
+figure figures fig table copier user users max min using non python ontario radsatz ownerid owner admin
+january february march april may june july august september october november december manual guide
+installation instructions plano nitronic refrigera od id\n
 advance bill materials material custom standard here quantity qty item part parts number no nº drawing
 drawings dwg sheet scale size rev revision date title approved checked drawn design designed tolerance
 tolerances iso din ansi gb jis unless otherwise specified dimensions finish weight mass description
@@ -160,7 +163,10 @@ STANDARD_CODE = re.compile(
     r"|^\d+x\d+|^[mM]\d+x\d+|x\d+mm$|^\d{4}-\d{2}-\d{2}")
 
 
-MAIL_PROVIDERS_SLD = {"gmail", "yahoo", "hotmail", "outlook", "live", "icloud", "proton", "protonmail", "aol",
+MAIL_PROVIDERS_SLD = {"tinyurl", "pdftk", "matweb", "netsplit", "cadclick", "bitly", "dropbox", "thingiverse",
+                      "grabcad", "instructables", "printables", "onshape", "autodesk", "solidworks", "mcmaster",
+                      "digikey", "mouser", "farnell", "adafruit", "sparkfun", "arduino", "raspberrypi",
+                      "sourceforge", "readthedocs", "creativecommons", "openhardware", "hackaday","gmail", "yahoo", "hotmail", "outlook", "live", "icloud", "proton", "protonmail", "aol",
                       "github", "gitlab", "google", "amazon", "microsoft", "apple", "wikipedia", "youtube",
                       "facebook", "twitter", "linkedin", "instagram", "googlemail", "mail", "email", "inbox"}
 
