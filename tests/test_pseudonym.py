@@ -37,3 +37,11 @@ def test_bytes_ascii_and_utf16_same_length():
     out = m.replace_bytes(raw)
     assert len(out) == len(raw)
     assert b"Jane Doe" not in out and "JANE DOE".encode("utf-16-le") not in out
+
+
+def test_short_names_never_hang():
+    m = Mapper()
+    import itertools
+    for a, b in itertools.product("abcdefghijklmnopqrstuvwxyz", repeat=2):
+        m.add(a + b)
+    assert len(m.entries) > 300

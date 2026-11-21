@@ -9,6 +9,7 @@ CODE=/data/code
 OUT=/data/attempts/attempt-$N
 REG=/data/registry/registry.json
 PY=$CODE/.venv/bin/python
+export PYTHONUNBUFFERED=1
 cd "$CODE"
 echo "== disk before"; df -h /data | tail -1
 AVAIL=$(df --output=avail -B1G /data | tail -1 | tr -d ' ')

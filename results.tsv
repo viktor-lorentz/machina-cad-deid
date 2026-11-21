@@ -1,1 +1,3 @@
 commit	local_score	submitted	server_score	notes
+c6ad2b0	829	no		attempt-1 build: content-only, cleaned registry; found=1 usable=1 deid_content=0.755
+e68bd4d	982	pending		attempt-1b: + multi-line STEP comments; found=1 usable=1 deid_content=0.974

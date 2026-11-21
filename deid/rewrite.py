@@ -75,6 +75,19 @@ def rw_text(data: bytes, m: Mapper) -> bytes:
     return m.replace_bytes(data, ("ascii",))
 
 
+def _in_step_string(data: bytes, s: int, e: int) -> bool:
+    """True if [s, e) lies inside a quoted literal or a /* comment */ of a STEP file."""
+    win = max(0, s - 200_000)
+    if data.rfind(b"/*", win, s) > data.rfind(b"*/", win, s):
+        return True  # inside a (possibly multi-line) comment
+    ls = max(data.rfind(b";", 0, s), data.rfind(b"\n", 0, s)) + 1
+    return data.count(b"'", ls, s) % 2 == 1
+
+
+def rw_step(data: bytes, m: Mapper) -> bytes:
+    return m.replace_bytes(data, ("ascii",), accept=_in_step_string)
+
+
 def rw_stl(data: bytes, m: Mapper) -> bytes:
     if data[:5].lower() == b"solid" and b"facet" in data[:2000]:
         return rw_text(data, m)
@@ -226,7 +239,7 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
     if not data:
         return data
     if e in ("step", "stp", "p21") or head.startswith(b"ISO-1030"):
-        return rw_text(data, m)
+        return rw_step(data, m)
     if e == "stl":
         return rw_stl(data, m)
     if head.startswith(b"%PDF") or e == "pdf":
@@ -240,7 +253,16 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
         name_map = (lambda n: map_path(n, G["allm"], m, True)) if e in ARCHIVE_EXT else None
         return rw_zip(data, m, name_map, depth)
     if head.startswith(OLE_MAGIC):
-        return rw_ole(data, m)
+        try:
+            return rw_ole(data, m)
+        except NotImplementedError:
+            # olefile cannot rewrite mini-stream entries; same-length patch of
+            # plain-string runs in the container keeps every sector offset valid
+            out = _guarded(data, m)
+            import olefile
+
+            olefile.OleFileIO(io.BytesIO(out)).close()
+            return out
     if e in TEXT_EXT or head.startswith(b"#UGC:") or _looks_text(data):
         return rw_text(data, m)
     return data

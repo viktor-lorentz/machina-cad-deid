@@ -96,9 +96,11 @@ def check_one(args):
         pass
     _, leaks = scan_file((out_root, new_rel))
     reg = {k: v for k, v in leaks.items() if not k.startswith("IND:")}
-    res["deid"] = int(not reg)
+    content = {k: v for k, v in reg.items() if not k.startswith("PATH:")}
+    res["deid"] = int(not content)
+    res["path_deid"] = int(len(content) == len(reg))
     res["deid_strict"] = int(not leaks)
-    res["leaks"] = sum(reg.values())
+    res["leaks"] = sum(content.values())
     res["ind"] = {k[4:]: v for k, v in leaks.items() if k.startswith("IND:")}
     return res
 
@@ -115,21 +117,21 @@ def run(in_root: str, out_root: str, results_json: str, reg: str, secret: bytes,
     with Pool(workers or os.cpu_count(), initializer=leak_init, initargs=(reg, secret)) as pool:
         for r in pool.imap_unordered(check_one, [(in_root, out_root, f, mapping.get(f, f)) for f in files],
                                      chunksize=16):
-            for k in ("found", "usable", "deid", "deid_strict"):
-                tot[k] += r[k]
-            ind_tot.update(r["ind"])
+            for k in ("found", "usable", "deid", "path_deid", "deid_strict"):
+                tot[k] += r.get(k, 0)
+            ind_tot.update(r.get("ind", {}))
             c = by_ext.setdefault(r["ext"], Counter())
             c["n"] += 1
             c["usable"] += r["usable"]
             c["deid"] += r["deid"]
     N = len(files)
-    rates = {k: tot[k] / N for k in ("found", "usable", "deid", "deid_strict")}
+    rates = {k: tot[k] / N for k in ("found", "usable", "deid", "path_deid", "deid_strict")}
     score = round(1000 * (0.15 * rates["found"] + 0.15 * rates["usable"] + 0.70 * rates["deid"] * rates["usable"]))
     strict = round(1000 * (0.15 * rates["found"] + 0.15 * rates["usable"]
                            + 0.70 * rates["deid_strict"] * rates["usable"]))
     print(f"held-out files: {N}  found={rates['found']:.4f} usable={rates['usable']:.4f} "
-          f"deid={rates['deid']:.4f} deid_strict={rates['deid_strict']:.4f}  "
-          f"LOCAL SCORE={score}  STRICT SCORE={strict}", file=sys.stderr)
+          f"deid(content)={rates['deid']:.4f} deid(path)={rates['path_deid']:.4f} "
+          f"deid_strict={rates['deid_strict']:.4f}  LOCAL SCORE={score}  STRICT SCORE={strict}", file=sys.stderr)
     print("independent findings by kind:", ind_tot.most_common(20), file=sys.stderr)
     from deid import consistency
 
