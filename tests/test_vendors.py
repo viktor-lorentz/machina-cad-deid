@@ -22,3 +22,10 @@ def test_labels_trademark_copyright():
 def test_known_vendors_whole_word():
     assert "McMaster" in vals("McMaster [93330A482]", "known")
     assert not vals("Motorcontact wagon", "known")
+
+
+def test_contact_rows():
+    t = "Brazil TF2 tfdois@tfdois.com.br Czech Republic ALBA precision, spol. s.r.o. info@albaprecision.cz India Ulhas Patil u.patil@wto-asia.com"
+    got = set(scan_text(t))
+    assert ("contact", "TF2") in got and ("contact", "ALBA precision, spol. s.r.o.") in got
+    assert ("contact-person", "Ulhas Patil") in got and ("contact-email", "u.patil@wto-asia.com") in got

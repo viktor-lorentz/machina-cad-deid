@@ -111,8 +111,21 @@ def _clean(v):
     return v
 
 
+_CTRY = (r"(?:Australia|Austria|Belgium|Brazil|Canada|China|Czech Republic|Denmark|Finland|France(?:,\s*(?:east|west|north|south))?|Germany|"
+         r"Great Britain|United Kingdom|USA|United States|Hungary|India|Israel|Italy|Japan|Korea|South Korea|Mexico|Netherlands|Norway|"
+         r"Poland|Portugal|Romania|Russia|Singapore|Slovakia|Slovenia|Spain|Sweden|Switzerland|Taiwan|Thailand|Turkey|Ukraine|"
+         r"New Zealand|South Africa|Argentina|Chile|Greece|Ireland|Malaysia|Indonesia|Vietnam|Philippines)")
+CONTACT = re.compile(r"\b" + _CTRY + r"[ ,:]+([A-Z][^@\n]{1,60}?)\s+([A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})")
+
+
 def scan_text(t):
     out = []
+    for m in CONTACT.finditer(re.sub(r"[ \t]+", " ", t)):
+        name = m.group(1).strip(" ,;")
+        if 2 <= len(name) <= 60 and not STOP.match(name):
+            person = re.fullmatch(r"[A-Z][a-zà-ÿ]+(?:[ \-][A-Z][a-zà-ÿ]+){1,2}", name) is not None
+            out.append(("contact-person" if person else "contact", name))
+        out.append(("contact-email", m.group(2)))
     t1 = re.sub(r"[ \t]+", " ", t)
     for v in _legal_names(t1):
         v = _clean(v)
@@ -201,6 +214,10 @@ def select(harvest_tsv, out_tsv, min_count=1):
         if re.fullmatch(r"[A-Z]{2,4}", v) and v not in KNOWN:
             continue  # bare short acronyms (PLC, SYSTEM-like) are too ambiguous
         kind = "company"
+        if src == "contact-person":
+            kind = "person"
+        elif src == "contact-email":
+            kind = "email"
         if src in ("copy", "steporg") and re.fullmatch(r"(?:[A-Z][a-z]+\.? ){1,2}[A-Z][a-z]+", v) and not re.search(SUFFIX, v):
             kind = "person"
         seen.setdefault(v, (kind, src))
