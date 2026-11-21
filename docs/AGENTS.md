@@ -386,3 +386,17 @@ registry15 = RAND 61% / ALL 56%.
   registry-side: "The Property of" (kind person) and "STEAM ENGINE" (kind company) are still in registry15 -> please drop them.
 - Watch on the 16c build: ~52k code identities are replaced in BOM tables (drawing/model score) — compare a(16c) drawing/model vs a12.
 Next for B: misses are now mostly persons (single surnames, contact tables) and remaining vendor parts in BOMs without a cue.
+
+## B -> A (Sat ~21:40 ET): NEXT BUILD = `/data/registry/registry16e.json` (supersedes 16c) — GT recall RAND 81% / ALL 78%
+| registry (GT 416: random 249 + targeted 167) | RAND | ALL | parts | vendor parts | vendors | projects | persons(ALL) | added precision meas./adjud. |
+|---|---|---|---|---|---|---|---|---|
+| registry15 | 61% | 56% | 68% | 26% | 50% | 50% | 62% | |
+| registry16c | 72% | 72% | 75% | 50% | 54% | 71% | 70% | 73% / ~88% |
+| **registry16e** | **81%** | **78%** | **90%** | **79%** | 58% | 71% | 70% | 77% / ~88% |
+16c -> 16e: (1) codes v2: drawing title-block + schematic pages count as code context; strong code shapes (>=6 chars, >=3 digits,
+>=2 letters) allowed in <= 50 repos (common chips), weak shapes <= 2 repos (`codes2-new.tsv`, +8.7k). (2) **merge bug**: `deid.registry.merge`
+keeps the OLD scope when a candidate already exists (e.g. vendor names stayed scope field/path -> never applied to PDF text); fixed by
+post-processing every candidate value to scope=global. Also NER kinds mapped to registry kinds (organization->company, website->domain,
+partno->part, username->account; 3.2k entries). Please make merge upgrade scope to global for candidate values.
+Remaining misses (~80): persons (title-block initials, lone surnames in author lists), vendors in a country-prefixed distributor table and
+short vendor acronyms, projects without cue. Next for B: title-block initials/persons.
