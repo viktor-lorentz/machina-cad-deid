@@ -15,3 +15,9 @@ leak 9/20 · consistency 5/15 · distinct 2/10 · relationships 11/20 · enginee
 PDF removal 163/300 · PDF consistency 71/200 · triplets 22/100 · drawing/model 154/200 · OLE acct 2/25 · OLE residue 2/25 · OLE preview 25/25 · OLE integrity 25/25
 Gaps (max-ours): PDF removal 137, PDF consistency 129, triplets 78, drawing/model 46, OLE acct 23, OLE residue 23.
 Regressions vs a3: drawing/model -21, packaging -2, distinct -1.
+
+## Attempt 6 — 561 (BB-2440305E, Sat 9:19 AM ET)
+registry8: paths exclude part numbers (native renames 2023 -> 399), part precision, project coinages, .co.nz email fix, US phones.
+leak 8/20 · consistency 4/15 · distinct 3/10 · relationships 11/20 · engineering 10/15 · OLE hidden 4/10 · packaging 5/10 ·
+PDF removal 174/300 · PDF consistency 93/200 · triplets 31/100 · drawing/model 164/200 · OLE acct 2/25 · OLE residue 2/25 · preview 25 · integrity 25
+Gaps: PDF removal 126, PDF consistency 107, triplets 69, drawing/model 36, OLE acct 23, OLE residue 23.
