@@ -155,6 +155,8 @@ EXCL2 = [re.compile(x, re.I) for x in (
     r"^(?:AISI|EN|AW|AL|SS|ST)\d", r"^\d+(?:[.,]\d+)?(?:mm|cm|kg|nm|uf|nf|pf|mh|uh|kohm|ohm|k|r|v|a|w|mw)$", r"^(?:rev|ver|v)[\-_.]?\d",
     r"^(?:sheet|page|fig|detail|section|view|item|step|part|no|nr)[\-_.]?\d", r"^\d+(?:st|nd|rd|th)$", r"^[a-z]{1,2}\d{1,2}$",
     r"^(?:m|g|r|w|t|h|n|c|p)\d+(?:[.,]\d+)?$", r"^\d+[a-z]$", r"^iso", r"^din", r"^gb\d", r"^jis",
+    r"^(?:VDD|VCC|VSS|GND|VIN|VOUT|VBUS|VBAT|AVDD|DVDD|VREF|VIO|VDDIO|\+?\d+V\d*)(?:_|$)", r"^OHL", r"^CERN-OHL", r"-position$", r"^\d+X\.",
+    r"^ASME", r"^ANSI", r"^CC-?BY", r"^GPL", r"^LGPL", r"^MIT-", r"^(?:P|PA|PB|PC|PD|PE|PF|GPIO|ADC|DAC|TIM|USART|UART|SPI|I2C)\d+(?:_|$)",
 )]
 
 
