@@ -19,10 +19,12 @@ T0=$(date +%s)
 $PY -m deid.cli rewrite /data/input "$OUT/corpus" --registry "$REG" $FLAGS
 T1=$(date +%s); echo "== rewrite took $((T1-T0))s"
 mv "$OUT/rewrite-results.json" "/data/attempts/attempt-$N.results.json"
+if [ -z "${SKIP_SCANS:-}" ]; then  # diagnostics only; with very large registries they can exhaust memory
 $PY -m deid.cli leakscan "$OUT/corpus" --registry "$REG" > /dev/null 2> "/data/attempts/attempt-$N.leak.log" || true
 tail -3 "/data/attempts/attempt-$N.leak.log"
 $PY -m deid.cli check /data/input "$OUT/corpus" --results "/data/attempts/attempt-$N.results.json" --registry "$REG" > "/data/attempts/attempt-$N.check.log" 2>&1 || true
 head -1 "/data/attempts/attempt-$N.check.log"
+fi
 T2=$(date +%s); echo "== scans took $((T2-T1))s"
 # code/: exact source at this commit + pinned dependency versions
 mkdir -p "$OUT/code"

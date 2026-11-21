@@ -23,6 +23,10 @@ def main():
         if r["h"] not in ents:
             continue
         t = r["text"]
+        # the old run used word-count chunks: GLiNER only read its first MAX_LEN words -> lines past that cut are
+        # NOT cached (left as misses for the model), so the cache never claims "no entity" for unseen text
+        toks = list(nd._GTOK.finditer(t))
+        cut = toks[nd.MAX_LEN - 1].end() if len(toks) > nd.MAX_LEN else len(t)
         offs = [o for o, _ in r["lines"]]
         bounds = offs[1:] + [len(t)]
         lines = []
@@ -31,7 +35,7 @@ def main():
             n, imap = nd._norm(raw)
             inv = {orig: ni for ni, orig in enumerate(imap)}
             lines.append((o, raw, n, inv))
-            if nd._useful(n):
+            if nd._useful(n) and o + len(raw) <= cut:
                 items.setdefault(nd.key(n), [])
         for lab, _txt, s, e, score in ents[r["h"]]:
             i = bisect.bisect_right(offs, s) - 1
@@ -39,7 +43,7 @@ def main():
                 continue
             o, raw, n, inv = lines[i]
             rs, re_ = s - o, e - o
-            if re_ > len(raw) or rs not in inv or (re_ - 1) not in inv or not nd._useful(n):
+            if re_ > len(raw) or rs not in inv or (re_ - 1) not in inv or not nd._useful(n) or nd.key(n) not in items:
                 continue
             items[nd.key(n)].append([inv[rs], inv[re_ - 1] + 1, nd.LABELS.get(lab, lab), score])
             nspans += 1

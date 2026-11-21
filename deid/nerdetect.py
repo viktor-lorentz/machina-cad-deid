@@ -10,8 +10,8 @@ Speed:
     the full-corpus NER run (tools/nercache_import.py), so a build over the same input runs no model at all.
   * lines without letters / shorter than 3 chars never reach the model; pages without text cost nothing.
   * cache misses: prefetch() packs unique lines (in page order, so neighbours stay real context) into
-    ~CHUNK_WORDS chunks and runs a multiprocess pool (spawn, 1 torch thread per worker, int8 dynamic
-    quantisation unless DEID_NER_INT8=0). GPU is used automatically if torch sees one (then 1 worker).
+    ~CHUNK_TOKENS chunks and runs a multiprocess pool (spawn, 1 torch thread per worker, fp32; DEID_NER_INT8=1
+    quantises but measured 0 entities vs 25 fp32, so it is off). GPU is used automatically if torch sees one (then 1 worker).
   * without gliner/torch installed, detect() still returns cached spans (run_missing is a no-op).
 
 Spans crossing a line break are dropped (cache unit = line). filter=True applies the engineering / software /
@@ -31,7 +31,10 @@ MODEL_DIR = os.environ.get("DEID_NER_MODEL") or next(iter(sorted(glob.glob(
     "/data/ner/work/hf/models--urchade--gliner_multi_pii-v1/snapshots/*"))), "urchade/gliner_multi_pii-v1")
 CACHE = os.environ.get("DEID_NER_CACHE", "/data/ner/cache.sqlite")
 THRESH = 0.45          # inference threshold (cached spans are all >= this); detect(min_score=) can raise it
-CHUNK_WORDS = 200
+MAX_LEN = 384          # gliner_config max_len: words beyond it are silently truncated
+CHUNK_TOKENS = 340     # GLiNER words per chunk (its splitter: \w+(?:[-_]\w+)*|\S)
+CHUNK_CHARS = 1800
+STALL_SECS = 600       # no result from the pool for this long -> finish the rest in-process
 BATCH = 8
 
 # GLiNER prompt label -> registry kind
@@ -53,6 +56,7 @@ KINDS = sorted(set(LABELS.values()))
 _KEEP_LABEL = {"company": "organization", "part": "partno", "domain": "website", "account": "username"}
 
 _WS = re.compile(r"\s+")
+_GTOK = re.compile(r"\w+(?:[-_]\w+)*|\S")
 _LETTER = re.compile(r"[A-Za-zÀ-ÿ]")
 
 
@@ -126,7 +130,7 @@ def _load():
         m.eval()
         if torch.cuda.is_available():
             m = m.to("cuda")
-        elif os.environ.get("DEID_NER_INT8", "1") != "0":
+        elif os.environ.get("DEID_NER_INT8") == "1":   # off by default: int8 dynamic quantisation kills all predictions
             m = torch.quantization.quantize_dynamic(m, {torch.nn.Linear}, dtype=torch.qint8)
         _M = m
     return _M
@@ -139,11 +143,13 @@ def _worker_init():
 
 
 def _pack(lines):
-    """Group normalised lines into chunks of <= CHUNK_WORDS words: [(text, [(line, offset)])]."""
+    """Group normalised lines into chunks of <= CHUNK_TOKENS GLiNER words and <= CHUNK_CHARS chars
+    (long tokens explode into sub-words: a 4.3k-char chunk took 42 s vs 5 s for 2.1k): [(text, [(line, offset)])].
+    A single over-long line is its own chunk, cut to CHUNK_CHARS (its tail is not seen by the model)."""
     chunks, cur, off, words = [], [], 0, 0
     for n in lines:
-        w = n.count(" ") + 1
-        if cur and words + w > CHUNK_WORDS:
+        w = len(_GTOK.findall(n))
+        if cur and (words + w > CHUNK_TOKENS or off + len(n) > CHUNK_CHARS):
             chunks.append(("\n".join(x for x, _ in cur), cur))
             cur, off, words = [], 0, 0
         cur.append((n, off))
@@ -151,7 +157,7 @@ def _pack(lines):
         words += w
     if cur:
         chunks.append(("\n".join(x for x, _ in cur), cur))
-    return chunks
+    return [(t if len(t) <= CHUNK_CHARS else t[:CHUNK_CHARS], m) for t, m in chunks]
 
 
 def _infer_chunks(chunks):
@@ -247,13 +253,51 @@ def prefetch(texts, workers: int | None = None, log=None) -> int:
             if log and j % 50 == 0:
                 log(f"ner {j}/{len(groups)}")
         return len(todo)
+    # ProcessPoolExecutor (not Pool): a crashed worker raises BrokenProcessPool instead of hanging forever
+    # (mp.Pool lost a task and hung at 400/420 twice). Stalls / breaks -> remaining groups run in-process.
     import multiprocessing as mp
+    from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
     workers = workers or min(32, os.cpu_count() or 4)
-    with mp.get_context("spawn").Pool(workers, initializer=_worker_init, maxtasksperchild=200) as pool:
-        for j, res in enumerate(pool.imap_unordered(_infer_chunks, groups)):
-            cache_put(res)
-            if log and j % 50 == 0:
-                log(f"ner {j}/{len(groups)}")
+    ex = ProcessPoolExecutor(workers, mp_context=mp.get_context("spawn"), initializer=_worker_init)
+    futs = {ex.submit(_infer_chunks, g): i for i, g in enumerate(groups)}
+    left, n_done = set(range(len(groups))), 0
+    try:
+        while futs:
+            done, _ = wait(futs, timeout=STALL_SECS, return_when=FIRST_COMPLETED)
+            if not done:
+                if log:
+                    log(f"ner: pool stalled, {len(left)} groups left -> in-process")
+                break
+            for f in done:
+                i = futs.pop(f)
+                try:
+                    cache_put(f.result())
+                    left.discard(i)
+                except Exception as e:      # BrokenProcessPool or a model error in that group
+                    if log:
+                        log(f"ner: group {i} failed in pool ({type(e).__name__})")
+                n_done += 1
+                if log and n_done % 50 == 0:
+                    log(f"ner {n_done}/{len(groups)}")
+            if any(isinstance(f.exception(), Exception) for f in done if f.done() and not f.cancelled()) \
+                    and getattr(ex, "_broken", False):
+                break
+    finally:
+        procs = list(getattr(ex, "_processes", {}).values())
+        ex.shutdown(wait=False, cancel_futures=True)
+        for p in procs:
+            if p.is_alive():
+                p.terminate()
+    if left:
+        torch.set_num_threads(min(16, os.cpu_count() or 4))
+    for j, i in enumerate(sorted(left)):
+        for c in groups[i]:
+            try:
+                cache_put(_infer_chunks([c]))
+            except Exception:
+                pass
+        if log and j % 10 == 0:
+            log(f"ner in-process {j}/{len(left)}")
     return len(todo)
 
 
