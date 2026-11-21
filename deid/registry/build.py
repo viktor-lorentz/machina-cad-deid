@@ -186,7 +186,8 @@ STANDARD_CODE = re.compile(
     r"|^\d+x\d+|^[mM]\d+x\d+|x\d+mm$|^\d{4}-\d{2}-\d{2}")
 
 
-MAIL_PROVIDERS_SLD = {"tinyurl", "pdftk", "matweb", "netsplit", "cadclick", "bitly", "dropbox", "thingiverse",
+MAIL_PROVIDERS_SLD = {"custhelp", "hsforms", "bilibili", "alibaba", "aliexpress", "salesforce", "zendesk",
+                      "hubspot", "mailchimp", "typeform", "tinyurl", "pdftk", "matweb", "netsplit", "cadclick", "bitly", "dropbox", "thingiverse",
                       "grabcad", "instructables", "printables", "onshape", "autodesk", "solidworks", "mcmaster",
                       "digikey", "mouser", "farnell", "adafruit", "sparkfun", "arduino", "raspberrypi",
                       "sourceforge", "readthedocs", "creativecommons", "openhardware", "hackaday","gmail", "yahoo", "hotmail", "outlook", "live", "icloud", "proton", "protonmail", "aol",
