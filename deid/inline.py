@@ -121,14 +121,20 @@ def scan_file(path):
             continue
         h = hashlib.sha1(t.encode("utf-8", "replace")).hexdigest()
         cp = os.path.join(_CACHE, h[:2], h) if _CACHE else None
+        spans = None
         if cp and os.path.exists(cp):
-            spans = [tuple(x) for x in json.load(open(cp))]
-        else:
+            try:
+                spans = [tuple(x) for x in json.load(open(cp))]
+            except (ValueError, OSError):
+                spans = None
+        if spans is None:
             spans = page_spans(t)
             if cp:
                 os.makedirs(os.path.dirname(cp), exist_ok=True)
-                with open(cp, "w") as fh:
+                tmp = f"{cp}.{os.getpid()}"
+                with open(tmp, "w") as fh:
                     json.dump(spans, fh)
+                os.replace(tmp, cp)
         res.update(spans)
     return res
 
