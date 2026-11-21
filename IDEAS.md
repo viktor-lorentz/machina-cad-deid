@@ -34,3 +34,8 @@ Gaps (max-ours): PDF removal 214, PDF consistency 160, non-collision 96, drawing
 - registry3 18% -> registry6 59% (67% excl vendors): part-number 0->84%, institution 15->85%, person 30->50%, phone 0->67%.
 - First attempt-5 build discarded: near-label junk (Colour/Remap/Extru) global; and a PDF perf trap (per-hit textpage rebuild).
 - Remaining misses: single surnames in rev tables (Taylor, Moore), first names not in list, projects (AdvLIGO, COSI, BeBoPr++), addresses, acronyms (DTU MPP, IRP), vendors (by design).
+- 08:00 attempt-5 build #2: LOCAL 982 but 38 SLDDRW files got their EXTENSION pseudonymised (part number "LCSAP-101.SLDDRW").
+  Fixed: map_path never touches the extension; part values strip file extensions. Also interleaved two-column
+  institution junk ("Technology Massachusetts Institute") caused 230 'technology' scope-changes -> filtered.
+- Strict pdfeval scope-change: a3 333, a4 577, a5#2 696. ~200 of a5's are accented identities (Amigó, Fundació, für)
+  that the checker can't see (ascii-ignore) -> artifact, not a real regression.
