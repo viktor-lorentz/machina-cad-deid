@@ -150,5 +150,49 @@ def main(argv):
     print(f"files {len(paths)} candidates {len(tot)} by source {dict(by)}")
 
 
+
+
+# ---- selection: harvest TSV -> clean candidate list (kind<TAB>value) -------------------------------------------
+LEAD = re.compile(r"^(?:(?i:sole|written|permission|case|will|de|the|property|of|by|from|copyright|all|rights|reserved|made|for|to|at|with|"
+                  r"see|contact|courtesy|and|or|is|a|an|distributed|produced|generated|licensed|under|trademark|trademarks|registered|"
+                  r"step caselib|in|on|use|this|that|our|your)[ ,]+)+")
+TAIL = re.compile(r"(?:[ ,.]+(?:All|All rights.*|Page|page|CC BY-SA|CC-BY.*|Rev.*|Ltd\. All))+$")
+GENERIC = {"author", "open cascade", "user", "users", "administrator", "admin", "sysadmin", "konstrukteur", "china", "unknown", "none",
+           "managed by terraform", "pcbnew", "nist", "sdrc", "university", "seller", "buyer", "company", "national institute", "owner",
+           "designer", "engineer", "student", "organization", "organisation", "default", "windows", "titans"}
+
+
+def select(harvest_tsv, out_tsv, min_count=1):
+    seen = {}
+    for l in open(harvest_tsv, encoding="utf-8", errors="ignore"):
+        try:
+            n, src, v = l.rstrip("\n").split("\t")
+        except ValueError:
+            continue
+        if src == "software" or int(n) < min_count:
+            continue
+        v = LEAD.sub("", v)
+        v = TAIL.sub("", v).strip(" ,.;:-")
+        if "," in v and src == "legal":  # "<junk>, Name GmbH" -> keep from the last comma not directly before the suffix
+            parts = re.split(r",\s+", v)
+            if len(parts) > 2 or (len(parts) == 2 and not re.match(SUFFIX + "$", parts[1])):
+                v = parts[-1] if re.search(SUFFIX + "$", parts[-1]) and " " in parts[-1] else v
+        low = v.lower()
+        if (len(v) < 3 or low in GENERIC or "�" in v or "http" in low or "/" in v and src != "legal"
+                or not re.search(r"[A-Za-z]{2}", v) or re.fullmatch(r"[A-Z][a-z]+", v) and src in ("copy", "steporg", "tm")):
+            continue  # single first names / generic words are too risky for global replacement
+        kind = "company"
+        if src in ("copy", "steporg") and re.fullmatch(r"(?:[A-Z][a-z]+\.? ){1,2}[A-Z][a-z]+", v) and not re.search(SUFFIX, v):
+            kind = "person"
+        seen.setdefault(v, (kind, src))
+    with open(out_tsv, "w") as fh:
+        for v, (kind, src) in seen.items():
+            fh.write(f"{kind}\t{v}\n")
+    return len(seen)
+
+
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    if sys.argv[1:2] == ["select"]:
+        print("selected", select(sys.argv[2], sys.argv[3]))
+    else:
+        main(sys.argv[1:])
