@@ -153,6 +153,13 @@ def _bad_name(v: str, kind: str) -> bool:
     return False
 
 
+STANDARD_CODE = re.compile(
+    r"(?i)^(?:iso|din|en|gb|gbt|ansi|asme|jis|uni|iec|nema|aisi|sae|astm|bs|nf|csa|ul|ieee|ipc|mil|"
+    r"rev|ver|version|v\d|r\d|m\d|sheet|page|fig|draft|copy|scan|img|image|dsc|screenshot|photo|"
+    r"untitled|drawing|part|assembly|assy|asm|model|test|sample|new|old|backup|final)(?=[-_.\d]|$)"
+    r"|^\d+x\d+|^[mM]\d+x\d+|x\d+mm$|^\d{4}-\d{2}-\d{2}")
+
+
 def is_junk(v: str, kind: str, files: int, from_path: bool) -> bool:
     if from_path:
         return False
@@ -165,6 +172,8 @@ def is_junk(v: str, kind: str, files: int, from_path: bool) -> bool:
         return True
     if kind in ("person", "company", "account", "project") and " " in v and _bad_name(v, kind):
         return True
+    if kind == "part":
+        return False
     if kind in ("person", "company") and _bad_name(v, kind):
         return True
     # odd internal casing like 'BgfF' or 'aBCd' from binary noise
@@ -189,6 +198,12 @@ def build(candidates_path: str, out_path: str) -> dict:
             if row.get("repos", 0) > 5 or not re.search(r"[a-z]", row["value"], re.I) or not near_word_ok(last):
                 continue
             row = dict(row, kind="person")
+        if row["kind"] == "partno":
+            # identifying part / document numbers: project-local codes only
+            v0 = row["value"]
+            if row.get("repos", 0) > 5 or STANDARD_CODE.search(v0) or re.fullmatch(r"(?i)v?\d+([._]\d+)+[a-z]?", v0):
+                continue
+            row = dict(row, kind="part")
         field_kind = None
         if row["kind"].endswith("_field"):
             # explicit identity field (OLE author / last saved by): always pseudonymised in

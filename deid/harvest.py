@@ -28,6 +28,37 @@ def ext_of(path: str) -> str:
     return name.rsplit(".", 1)[-1].lower() if "." in name else ""
 
 
+PARTNO_RX = re.compile(r"(?<![A-Za-z0-9])([A-Za-z][A-Za-z0-9]{0,9}(?:[-_.][A-Za-z0-9]{1,10}){0,6}?[-_]?\d[A-Za-z0-9]*"
+                       r"(?:[-_][A-Za-z0-9]{1,10}){0,5})(?![A-Za-z0-9])")
+
+
+def part_numbers(name: str) -> list[tuple[str, str]]:
+    """Part / document / project codes in a file or folder name, e.g. D1900350, TA00-04-0001,
+    ICUB3_014_P_109, NNP-DWG-140-007-002 (filtered again at registry build)."""
+    def ok(v: str) -> bool:
+        nd = len(re.findall(r"\d", v))
+        if v.isdigit():
+            return 6 <= len(v) <= 12
+        return 5 <= len(v) <= 40 and nd >= 3 and re.search(r"[A-Za-z]", v) is not None
+
+    out = set()
+    for m in PARTNO_RX.finditer(name):
+        v = m.group(1).strip("-_.")
+        if ok(v):
+            out.add(v)
+        segs = re.split(r"([-_.])", v)
+        # core: prefix up to the last segment carrying >= 3 digits (drops _rev_A1, -v7, -Drawing)
+        last = max((i for i, sg in enumerate(segs) if len(re.findall(r"\d", sg)) >= 3), default=-1)
+        if last >= 0:
+            core = "".join(segs[:last + 1]).strip("-_.")
+            if ok(core):
+                out.add(core)
+            for sg in segs[::2]:
+                if ok(sg):
+                    out.add(sg)
+    return [(v, "partno") for v in out]
+
+
 def path_identities(rel: str) -> list[tuple[str, str]]:
     """Identities encoded in the directory layout."""
     parts = rel.split("/")
@@ -102,6 +133,8 @@ def harvest_file(args: tuple[str, str]) -> tuple[str, str, list[tuple[str, str]]
     except Exception as ex:  # noqa: BLE001
         defect = f"error:{type(ex).__name__}"
     cands += path_identities(rel)
+    base = rel.rsplit("/", 1)[-1]
+    cands += part_numbers(base.rsplit(".", 1)[0] if "." in base else base)
     return rel, e, cands, defect
 
 
