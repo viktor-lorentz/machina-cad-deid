@@ -393,7 +393,7 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
 
             olefile.OleFileIO(io.BytesIO(out)).close()
             return out
-    if e in ("sldprt", "sldasm", "slddrw", "sldlfp", "slddrt") and G.get("swx", True):
+    if e in ("sldprt", "sldasm", "slddrw", "sldlfp", "slddrt") and G.get("swx", False):
         from deid.formats import swx
 
         if swx.is_swx(data):
