@@ -267,6 +267,8 @@ def rewrite(data: bytes, mapper) -> bytes:
             continue
         placements = []
         seen = set()
+        tp = None
+        spans = []
         for s, e, key in hits:
             try:
                 occ_raw = raw[s:e].decode("utf-8")
@@ -284,17 +286,28 @@ def rewrite(data: bytes, mapper) -> bytes:
                 pos += len(seg)
             if len(parts) > 1:
                 parts = [(a.strip(), b.strip()) for a, b in parts if len(a.strip()) >= 3]
+            if tp is None:
+                tp = page.get_textpage()
+                spans = [(fitz.Rect(sp["bbox"]), sp["size"]) for b in page.get_text("dict", textpage=tp)["blocks"]
+                         for ln in b.get("lines", []) for sp in ln.get("spans", [])]
             for seg, seg_rep in parts:
-                for rect in page.search_for(seg):
+                if len(placements) >= MAX_PLACEMENTS:
+                    break
+                rects = page.search_for(seg, textpage=tp)
+                multi = len(rects) > 1 and " " in seg
+                wmax = max((r.width for r in rects), default=0)
+                for rect in rects:
+                    # wrapped pieces are narrower than a full hit; check few-hit cases fully
+                    maybe_wrapped = multi and (len(rects) <= 4 or rect.width < 0.85 * wmax)
                     # a hit wrapped over lines comes back as one rect per line:
                     # give each rect only the matching slice of the pseudonym
-                    inside = re.sub(r"\s+", " ", page.get_textbox(rect)).strip()
                     rep_here = seg_rep
+                    inside = re.sub(r"\s+", " ", page.get_textbox(rect, textpage=tp)).strip() if maybe_wrapped else ""
                     if inside and inside.lower() != seg.lower():
                         k = seg.lower().find(inside.lower())
                         if k >= 0:
                             rep_here = seg_rep[k:k + len(inside)]
-                    size = _font_size_at(page, rect) or max(4.0, rect.height * 0.8)
+                    size = next((sz for r, sz in spans if r.intersects(rect)), None) or max(4.0, rect.height * 0.8)
                     placements.append((rect, rep_here, size))
                     # redact only the middle band: glyphs of this line cross it, glyphs of
                     # tightly spaced neighbouring lines (dimensions, notes) do not
@@ -320,6 +333,9 @@ def rewrite(data: bytes, mapper) -> bytes:
     if chk.page_count != n_pages:
         raise ValueError("page count changed")
     return out
+
+
+MAX_PLACEMENTS = 400  # per page; bounds time on dense manuals
 
 
 def _font_size_at(page, rect) -> float | None:

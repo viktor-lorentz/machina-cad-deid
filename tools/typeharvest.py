@@ -45,6 +45,24 @@ SOFTWARE = re.compile(r"(solidworks|inventor|autocad|freecad|catia|creo|nx|paras
                       r"inkscape|matlab|python|kicad|eagle|altium|fusion|onshape|rhino|blender|sketchup|"
                       r"solid edge|ansys|abaqus|comsol|step|iges|stl|pdf|xml|utf|unicode)", re.I)
 
+PUBLIC_HOSTS = re.compile(r"(^|\.)(w3\.org|creativecommons\.org|freecadweb\.org|freecad\.org|steptools\.com|spatial\.com|"
+    r"github\.com|gitlab\.com|inkscape\.org|gmail\.com|purl\.org|sourceforge\.net|gnu\.org|adobe\.com|microsoft\.com|"
+    r"iso\.org|openxmlformats\.org|apple\.com|google\.com|youtube\.com|wikipedia\.org|python\.org|mozilla\.org|"
+    r"opencascade\.(com|org)|autodesk\.com|solidworks\.com|3ds\.com|ptc\.com|w3c\.org|xmlsoap\.org|example\.(com|org)|"
+    r"github\.io|githubusercontent\.com|thingiverse\.com|grabcad\.com|cadquery\.org|kicad\.org|openscad\.org)$", re.I)
+TECH_WORDS = {"metadata", "linecap", "linejoin", "serif", "solaris", "sketch", "pocket", "fillet", "chamfer", "datum",
+              "polyline", "lwpolyline", "vertex", "nurbs", "bezier", "sodipodi", "inkscape", "namedview", "tolerance",
+              "radius", "diameter", "default", "unnamed", "untitled", "parasolid", "isometric", "revolve", "extrude",
+              "loft", "shell", "mirror", "pattern", "origin", "body", "part", "assembly", "drawing", "layout", "model",
+              "macro", "panel", "bracket", "washer", "gasket", "bushing", "spacer", "motor", "servo", "arduino", "raspberry",
+              "nema", "lidar", "camera", "gimbal", "drone", "robot", "rover", "gripper", "chassis", "helvetica", "arial",
+              "calibri", "verdana", "tahoma", "garamond", "consolas", "segoe", "roboto", "monospace", "italic", "bold"}
+FC_DEFAULT = re.compile(r"^[A-Z][a-z]+[A-Z]?[a-z]*\d{3}$|^(Sketch|Pad|Pocket|Body|Origin|Part|Fillet|Chamfer|Line|Plane|Axis|"
+                        r"Point|Shape|Cut|Fusion|Mirror|Array|Loft|Sweep|Revolution|Extrude|Boss|Hole|Feature|Datum|Spreadsheet|"
+                        r"Constraint|Group|Clone|Compound|Draft|Wire|Face|Edge|Vertex|Box|Cylinder|Sphere|Cone|Torus)\d*$", re.I)
+SVG_KEEP = re.compile(r"<(?:title|desc|text|tspan|dc:\w+|rdf:li|cc:\w+)[^>]*>([^<]{2,300})<|<!--(.{2,300}?)-->|"
+                      r"(?:inkscape:export-filename|sodipodi:docname|xlink:href)=\"([^\"]{2,300})\"", re.S)
+
 def load_dict():
     words = set()
     for p in ("/usr/share/dict/american-english", "/usr/share/dict/words"):
@@ -85,13 +103,16 @@ CV = "bcdfghjklmnprstvwxyz"
 INVENTED = re.compile(rf"\b(?:[{CV}]?[aeiou]){{2,}}[{CV}]?\b", re.I)          # Zotakul, Uliredok
 DOTTED = re.compile(r"\b[a-z]{2,8}(?:\.[a-z]{2,10}){1,3}\b")                    # ote.ipob.eka
 URL = re.compile(r"\b(?:https?|ftp)://[^\s\"'<>)\]]+|\bwww\.[a-z0-9-]+(?:\.[a-z0-9-]+)+", re.I)
-EMAIL = re.compile(r"\b[\w.+-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+\b", re.I)
+EMAIL = re.compile(r"\b[\w.+-]*[A-Za-z][\w.+-]*@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,10}\b", re.I)
+FILE_EXT = set("svg stp step sat wrl gz iid dtd xml png jpg jpeg gif stl pdf json txt py js htm html css obj dxf igs iges "
+               "dll exe tlb ocx slddrt sldprt sldasm slddrw ipt iam idw dwg prt asm par fcstd 3mf zip tar md csv ini cfg "
+               "x_t x_b jt f3d bmp tif tiff hh h c cpp hpp".split())
 TLDS = "com|org|net|edu|gov|io|de|uk|fr|es|it|nl|ch|se|no|dk|fi|jp|cn|au|nz|ca|us|ru|pl|cz|be|at|br|in|eu|info|biz|co"
 HOST = re.compile(rf"\b(?:[a-z0-9-]{{2,}}\.)+(?:{TLDS})\b", re.I)
 USERPATH = re.compile(r"(?:[A-Za-z]:\\(?:Users|Documents and Settings)\\|/home/|/Users/)([A-Za-z0-9._ -]{2,32}?)(?=[\\/])")
 DOMUSER = re.compile(r"\b([A-Z][A-Z0-9-]{2,15})\\([A-Za-z][A-Za-z0-9._-]{1,24})\b")
 PHONE = re.compile(r"(?<![\w.])(?:\+\d{1,3}[\s.-]?)?(?:\(\d{2,4}\)[\s.-]?|\d{2,4}[\s.-])\d{2,4}[\s.-]\d{2,5}(?:[\s.-]\d{2,4})?(?![\w.])")
-PHONE_CTX = re.compile(r"(tel|phone|fax|ph|mobile|cell|t:|f:|telefon|tél|tlf|call)", re.I)
+PHONE_CTX = re.compile(r"(?:\b(?:tel|phone|fax|ph|mobile|cell|telefon|telefono|teléfono|tél|tlf|call|kontakt)\b\.?|\b[TFM]\b)\s*[:.]?\s*$", re.I)
 ADDRESS = re.compile(r"\b\d{1,5}\s+(?:[A-Z][a-z]+\.?\s+){1,4}(?:Street|St\.?|Avenue|Ave\.?|Road|Rd\.?|Boulevard|Blvd\.?|"
                      r"Drive|Dr\.?|Lane|Ln\.?|Way|Court|Ct\.?|Place|Pl\.?|Parkway|Pkwy|Highway|Hwy|Circle)\b"
                      r"|\b(?:[A-Z][a-zäöü]+)(?:straße|strasse|str\.|weg|platz|gasse)\s+\d{1,4}\b"
@@ -99,10 +120,17 @@ ADDRESS = re.compile(r"\b\d{1,5}\s+(?:[A-Z][a-z]+\.?\s+){1,4}(?:Street|St\.?|Ave
                      r"|\b(?:Suite|Ste\.?|P\.?O\.? Box)\s+\d+\b"
                      r"|\b[A-Z][a-z]+,\s+[A-Z]{2}\s+\d{5}(?:-\d{4})?\b", re.U)
 PARTLABEL = re.compile(r"(?:DWG|DRAWING|DRG|PART|DOC(?:UMENT)?|ITEM|ASSY|ASSEMBLY|P/N|PN|CAT(?:ALOG)?|ORDER|ART(?:ICLE)?|"
-                       r"SKU|MODEL|REF|PROJECT|JOB)\s*(?:NO|NUM(?:BER)?|#|ID|CODE)?\.?\s*[:#]?\s*([A-Z0-9][A-Z0-9_./-]{3,30})", re.I)
+                       r"SKU|MODEL|REF|PROJECT|JOB|Drawing|Part|Document|Doc|Item|Project)\s*(?:NO|No|NUM(?:BER)?|Number|#|ID|CODE|Code)\.?\s*[:#]?\s*([A-Z0-9][A-Za-z0-9_./-]{3,30})")
 # code-like tokens: letters + digits, dashes/underscores, len>=5
 CODE = re.compile(r"\b(?=[A-Za-z0-9_.-]*\d)(?=[A-Za-z0-9_.-]*[A-Za-z])[A-Za-z0-9]{1,10}(?:[-_.][A-Za-z0-9]{1,12}){0,5}\b")
 PROJCODE = re.compile(r"\b[A-Z]{2,5}(?:-[A-Z0-9]{2,12}){2,5}\b")
+
+BAD_USERS = {"public", "default", "all users", "administrator", "admin", "user", "users", "system32", "shared",
+             "guest", "owner", "default user", "runner", "travis", "root", "appveyor", "vagrant", "ubuntu", "docker"}
+PHONE_STRICT = re.compile(r"^(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}$|^\+\d{1,3}[\s.-]\(?\d{1,4}\)?(?:[\s.-]\d{2,4}){2,4}$")
+
+ADDR_EXCL = re.compile(r"\b(bolt|pitch|base|center|centre|hole|steel|stainless|aluminum|aluminium|brass|shaft|gear|thread|"
+                       r"screw|hex|socket|flat|round|square|slot|key|pin|nut|washer|spring|belt|chain|pulley|bearing)\b", re.I)
 
 def ctx(text: str, s: int, e: int, w: int = 40) -> str:
     return re.sub(r"\s+", " ", text[max(0, s - w): e + w])
@@ -131,47 +159,61 @@ def scan_text(acc: Acc, text: str, src: str, fid: int, phone_needs_ctx: bool = T
         acc.add("email", m.group(0).lower(), src, fid, ctx(text, m.start(), m.end()))
     for m in HOST.finditer(text):
         v = m.group(0).lower()
-        if not SOFTWARE.fullmatch(v.split(".")[0]):
+        if not SOFTWARE.fullmatch(v.split(".")[0]) and not PUBLIC_HOSTS.search(v):
             acc.add("host", v, src, fid, ctx(text, m.start(), m.end()))
     for m in USERPATH.finditer(text):
-        acc.add("username", m.group(1), src, fid, ctx(text, m.start(), m.end()))
-    for m in DOMUSER.finditer(text):
-        acc.add("username", m.group(0), src, fid, ctx(text, m.start(), m.end()))
+        if m.group(1).lower() not in BAD_USERS:
+            acc.add("username", m.group(1), src, fid, ctx(text, m.start(), m.end()))
+    if src in ("pdfmeta", "olemeta", "zipmeta", "stephdr", "igeshdr"):
+        for m in DOMUSER.finditer(text):
+            if m.group(2).lower() not in BAD_USERS and m.group(1).upper() not in ("WINDOWS", "PROGRAM", "SYSTEM32"):
+                acc.add("username", m.group(0), src, fid, ctx(text, m.start(), m.end()))
     for m in PHONE.finditer(text):
         v = m.group(0).strip()
         digits = re.sub(r"\D", "", v)
         if not 7 <= len(digits) <= 15 or DATE.match(v):
             continue
         pre = text[max(0, m.start() - 25): m.start()]
-        has = bool(PHONE_CTX.search(pre)) or v.startswith(("+", "("))
+        groups = [g for g in re.split(r"\D+", v) if g]
+        if len(groups) >= 4 and all(len(g) <= 3 for g in groups) and not PHONE_CTX.search(pre):
+            continue
+        ints = [int(g) for g in groups]
+        if all(0 < b - a <= 2 for a, b in zip(ints, ints[1:])):   # 19 20 21 22 lists
+            continue
+        has = bool(PHONE_CTX.search(pre)) or bool(PHONE_STRICT.match(v))
         if phone_needs_ctx and not has:
             continue
         acc.add("phone" if has else "phone?", v, src, fid, ctx(text, m.start(), m.end()))
     for m in ADDRESS.finditer(text):
+        if ADDR_EXCL.search(m.group(0)):
+            continue
         acc.add("address", m.group(0).strip(), src, fid, ctx(text, m.start(), m.end()))
     for m in PARTLABEL.finditer(text):
         v = m.group(1).strip("./-")
-        if re.search(r"\d", v) and not engineering(v):
+        if len(re.findall(r"\d", v)) >= 2 and not engineering(v) and not FC_DEFAULT.match(v):
             acc.add("partno:label", v, src, fid, ctx(text, m.start(), m.end()))
     for m in PROJCODE.finditer(text):
         v = m.group(0)
-        if not engineering(v):
+        if not engineering(v) and not v.startswith("CC-") and not re.fullmatch(r"[0-9A-F-]+", v):
             acc.add("projcode", v, src, fid, ctx(text, m.start(), m.end()))
     for m in CODE.finditer(text):
         v = m.group(0)
         if len(v) < 6 or engineering(v) or re.fullmatch(r"[\d.\-_]+[A-Za-z]?", v):
             continue
-        if re.fullmatch(r"v?\d+(\.\d+)+", v, re.I):       # versions
+        if re.fullmatch(r"v?\d+(\.\d+)+", v, re.I) or FC_DEFAULT.match(v) or re.search(r"\d{4}-\d\d-\d\dT", v):
+            continue
+        if "." in v and v.rsplit(".", 1)[1].lower() in FILE_EXT or re.fullmatch(r"\d+(\.\d+)?e[-+]?\d+", v, re.I) \
+                or re.search(r"_(Plane|Axis)\d{3}$|^(AUTOMOTIVE_DESIGN|CONFIG_CONTROL|AP2\d\d)", v):
             continue
         acc.add("code", v, src, fid, ctx(text, m.start(), m.end()))
     for m in INVENTED.finditer(text):
         v = m.group(0)
-        if len(v) >= 5 and not in_dict(v) and not engineering(v):
+        if len(v) >= 5 and not v.isupper() and v.lower() not in TECH_WORDS and not in_dict(v) and not engineering(v):
             acc.add("invented", v, src, fid, ctx(text, m.start(), m.end()))
     for m in DOTTED.finditer(text):
         v = m.group(0)
         parts = v.split(".")
-        if parts[-1] in TLDS.split("|"):
+        if parts[-1] in TLDS.split("|") or any(q.lower() in FILE_EXT for q in parts):
             continue
         if sum(not in_dict(p) for p in parts) >= 2:
             acc.add("invented.dotted", v, src, fid, ctx(text, m.start(), m.end()))
@@ -253,8 +295,13 @@ def process(item):
     scan_text(acc, rel.replace("/", " / ").replace("_", " _ "), "path", fid, phone_needs_ctx=True)
     for seg in rel.split("/"):
         stem = seg.rsplit(".", 1)[0]
-        if CODE.fullmatch(stem) and re.search(r"\d", stem) and not engineering(stem) and len(stem) >= 6:
+        if CODE.fullmatch(stem) and re.search(r"\d", stem) and not engineering(stem) and len(stem) >= 6 \
+                and not FC_DEFAULT.match(stem):
             acc.add("partno:filename", stem, "path", fid, rel[-120:])
+        toks = [t for t in re.split(r"[._\-\s]+", stem) if t]
+        inv = [t for t in toks if len(t) >= 3 and INVENTED.fullmatch(t) and not in_dict(t) and t.lower() not in TECH_WORDS]
+        if len(inv) >= 2 or (len(inv) == 1 and len(inv[0]) >= 6 and len(toks) == 1):
+            acc.add("invented.segment", seg, "path", fid, rel[-120:])
     ext = rel.rsplit(".", 1)[-1].lower() if "." in rel else ""
     try:
         if ext == "pdf":
@@ -282,6 +329,16 @@ def process(item):
                 elif ext in ("igs", "iges"):
                     txt = "\n".join(l[:72] for l in txt.splitlines() if l[72:73] in ("S", "G"))
                     src = "igeshdr"
+                elif ext == "svg":
+                    txt = "\n".join(next(g for g in m.groups() if g) for m in SVG_KEEP.finditer(head.decode("utf-8", "ignore")))
+                    src = "svgmeta"
+                elif ext in ("obj", "wrl", "vrml", "scad", "gcode", "nc"):
+                    txt = "\n".join(l for l in txt.splitlines() if l.lstrip().startswith(("#", "//", ";")))
+                    src = "comments"
+                elif ext == "dxf":
+                    ls = txt.splitlines()
+                    txt = "\n".join(ls[i + 1] for i in range(len(ls) - 1) if ls[i].strip() in ("999", "1") )
+                    src = "dxftext"
                 else:
                     src = "texthead"
                 scan_text(acc, txt, src, fid)
@@ -289,9 +346,8 @@ def process(item):
                 # binaries: only high-precision types in raw strings
                 s = printable(head + tail)
                 for m in USERPATH.finditer(s):
-                    acc.add("username", m.group(1), "rawstr", fid, ctx(s, m.start(), m.end()))
-                for m in DOMUSER.finditer(s):
-                    acc.add("username", m.group(0), "rawstr", fid, ctx(s, m.start(), m.end()))
+                    if m.group(1).lower() not in BAD_USERS:
+                        acc.add("username", m.group(1), "rawstr", fid, ctx(s, m.start(), m.end()))
                 for m in EMAIL.finditer(s):
                     acc.add("email", m.group(0).lower(), "rawstr", fid, ctx(s, m.start(), m.end()))
                 for m in URL.finditer(s):
