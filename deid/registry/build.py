@@ -29,12 +29,36 @@ STOP = {
     "source", "src", "export", "exports", "stl files", "step files", "pro", "lite", "mini", "v1",
     "v2", "v3", "robot", "robotics", "printer", "3d-printer", "library", "examples", "example",
     "dassault", "dassault systemes", "ptc", "pro/engineer", "nx", "solid edge", "draftsight",
-    "librecad", "ezdxf", "inkscape", "gnu.org", "www.gnu.org", "step.parts",
+    "librecad", "ezdxf", "inkscape", "gnu.org", "www.gnu.org",
 }
 MAIL_PROVIDERS = {"gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "yahoo.com",
                   "icloud.com", "me.com", "live.com", "msn.com", "aol.com", "protonmail.com",
                   "proton.me", "gmx.de", "gmx.net", "web.de", "qq.com", "163.com", "mail.ru",
                   "yandex.ru", "users.noreply.github.com", "noreply.github.com"}
+
+
+TLDS = set("""com org net edu gov mil int io co uk de fr it es ch nl be at se no dk fi pl cz sk hu ro
+bg gr pt ie is ee lv lt si hr rs ua by ru kz tr il cn jp kr tw hk sg in id my th vn ph au nz ca us mx br
+ar cl pe za eg info biz me dev ai tech xyz parts eu app cloud site online space store shop design
+engineering tools works systems science lab academy""".split())
+PLACEHOLDER = re.compile(r"^(?:NAUO|PERSON|ORGANIZATION|ORG|PER|PDF|SDR|PROD|PD)[-_]|_(?:NAME|ID|DESCRIPTION)$", re.I)
+VENDOR = re.compile(r"kicad|stepup|ksu mcad|zwcad|step tools|steptools|3ds\.com|netfabb|matplotlib|cairograph|"
+                    r"fontawesome|openstreetmap|osm\.org|naturalearth|protomaps|pdf-tools|aiim\.org|iec\.ch|"
+                    r"solidworks|autodesk|dassault|siemens|ptc\.com|spatial|adobe|microsoft|freecad|onshape|"
+                    r"opencascade|ugs|parasolid|acis|inventor|catia|creo|zwsoft|gstarcad|bricscad|draftsight|"
+                    r"ghostscript|libreoffice|openoffice|inkscape|blender|sketchup|rhino|prusa|bambu|cura", re.I)
+
+
+def clean(v: str) -> str:
+    v = v.replace("\x00", "")
+    v = "".join(ch for ch in v if ch.isprintable())
+    return v.strip("﻿￾\xfe\xff \t")
+
+
+def valid_host(h: str) -> bool:
+    labels = h.split(".")
+    return (len(labels) >= 2 and labels[-1].lower() in TLDS and labels[-1].isalpha()
+            and all(re.fullmatch(r"[A-Za-z0-9-]{1,63}", x) for x in labels) and any(c.isalpha() for c in labels[-2]))
 
 
 def _from_path(row: dict) -> bool:
@@ -82,8 +106,15 @@ def build(candidates_path: str, out_path: str) -> dict:
     reg: dict[str, dict] = {}
     for row in data["candidates"]:
         for value, kind in expand(row["value"], row["kind"]):
-            v = re.sub(r"\s+", " ", value.strip())
+            v = re.sub(r"\s+", " ", clean(value))
             low = v.lower()
+            if PLACEHOLDER.search(v) or VENDOR.search(v):
+                continue
+            if kind == "email":
+                if "@" not in v or not valid_host(v.rsplit("@", 1)[1]) or not re.search(r"[A-Za-z]", v.split("@")[0]):
+                    continue
+            if kind == "domain" and not valid_host(v):
+                continue
             if not v or alnum_len(v) < 2 or len(v) > 120:
                 continue
             if low in STOP and not (row["kind"] in ("account", "project", "domain") and value == row["value"]
