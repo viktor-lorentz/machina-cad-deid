@@ -378,9 +378,43 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
 
             olefile.OleFileIO(io.BytesIO(out)).close()
             return out
+    if e in ("sldprt", "sldasm", "slddrw", "sldlfp", "slddrt") and G.get("swx", True):
+        from deid.formats import swx
+
+        if swx.is_swx(data):
+            return rw_swx(data, m)
     if e in TEXT_EXT or head.startswith(b"#UGC:") or _looks_text(data):
         return rw_text(data, m)
     return data
+
+
+def rw_swx(data: bytes, m: Mapper) -> bytes:
+    """SolidWorks 2015+ sections: XML property sections get full replacement; binary sections only
+    word-bounded matches of >=5 bytes (as for OLE streams). Field values (creator, last saved by,
+    drawn by ...) found in this file are replaced in every section with their corpus pseudonym."""
+    from deid.formats import swx
+    from deid.registry.pseudonym import norm
+
+    allm = G.get("allm") or m
+    local = Mapper(secret=allm.secret)
+    for v, k in swx.harvest(data):
+        key = norm(v)
+        if len(v) >= 3 and key in allm.entries:
+            local.entries[key] = allm.entries[key]
+            local.kinds[key] = allm.kinds.get(key, "account")
+
+    def transform(name: str, body: bytes) -> bytes:
+        if name.endswith((".xml", ".rels")) or name.startswith("docProps/"):
+            body = m.replace_bytes(body, ("ascii",))
+            if local.entries:
+                body = local.replace_bytes(body, ("ascii",))
+            return body
+        body = m.replace_bytes(body, ("ascii", "utf-16-le"), accept=lambda src, a, b: b - a >= 5)
+        if local.entries:
+            body = local.replace_bytes(body, ("utf-16-le", "ascii"), accept=lambda src, a, b: b - a >= 4)
+        return body
+
+    return swx.rewrite(data, transform)
 
 
 def _looks_text(data: bytes) -> bool:
