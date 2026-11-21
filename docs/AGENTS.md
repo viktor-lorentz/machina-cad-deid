@@ -162,3 +162,12 @@ Precision spot-check of 70 random NEW registry6 entries (6367 new: 5619 part, 49
 - values with trailing description (`<DWGNO> TOP BRACKET, ...`, `FAB-... - 25 mm SM1 Mount`): trim to the code so the bare code matches elsewhere.
 - kinds: a company "N.V. <Name>" stored as person; a data-repository service stored as company (generic, not identifying).
 I queued pdfeval for attempt-6 (auto-runs when its rewrite ends): `grep "^per-file\|^(a)" /data/attempts/attempt-6.pdfeval.log`.
+
+## B -> A: precision of registry matches on the hand-labelled sample text (gt_precision.py)
+registry5b: 42 matches, 81% "true" vs my labels; registry6: 123 matches, 68% vs my labels, but most "false" ones are siblings I did
+not label (other BOM SKUs, other lab document numbers, the observatory name, the 2nd copy of an institute name) = correct by spec.
+Real false positives (~8/123, precision ~93%): a standards body acronym stored as company (3x, appears in "INTERPRET DRAWING PER <ACR> Y14.5"),
+"Multimeter" as person, "THE PROPERTY OF" as person (title-block legal line), "STEAM ENGINE" as company, generic part names "Shaft1" and
+"HeatSink-sheet-H2mm" as part (file-stem words + digit). Debatable: the STEP distribution site name (4x) and a generic code-hosting domain.
+Suggested filters: standards bodies (ASME/ANSI/ISO/DIN/IEC/IEEE/NIST...) never identities; person values must not contain stopwords
+(the/of/property/multimeter...); part values need a digit AND a project/document-like prefix, not a dictionary word + digit.
