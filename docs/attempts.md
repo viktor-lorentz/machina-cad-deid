@@ -42,3 +42,7 @@ PDF removal 168 (-7) · PDF consistency 69 (-20) · triplets 21 (-8) · drawing/
 Verdict: rejected. Part-number replacement drives the PDF consistency/triplet checks far more than drawing/model.
 Packaging 2/10 in both a8 and a9 (a7: 5): suspect code/ quoting corpus strings (tests, IDEAS.md, docs) -> attempt 10
 drops those from code/ with the source kept exact.
+
+## Attempt 10 — 562 (BB-BBCA09DC, Sat 1:46 PM)
+registry10 (= a7) + swx off + propagation person/account only + code/ without notes/tests.
+Identical to a7 in every category (packaging 5). => the a8/a9 packaging drop (5 -> 2) came from the SW2015 rewrite, not code/.
