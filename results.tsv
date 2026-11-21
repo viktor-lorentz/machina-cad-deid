@@ -7,3 +7,4 @@ ebde0e6	985	yes: attempt-2 receipt BB-62DF6234 (Sat 02:13 ET)	266	attempt-2: + p
 5	616ba1d	BB-E3346D04	508	registry6 recall pass (GT 18->59%), ext-safe paths, middle-band redaction; local 983; strict scope-change 473 (a4 577)
 6	9490e3b	BB-2440305E	561	registry8; paths exclude part numbers (native renames 2023->399); email .co.nz fix; US phones; projects; local 980; strict clean 0.754
 7	6f48e9d	BB-5900CE8E	562	registry10; stems only person/account/email/domain/phone (native renames 131); OLE per-file field propagation; FORMAT_WORDS guard; aLIGO; local 981; strict clean 0.755
+8	5c898e9	BB-9ACD7430	pending	registry11 (+SW docProps harvest); SW2015+ section rewrite (CRC, padded); field_ok; propagation person/account only; local 980; strict clean 0.741
