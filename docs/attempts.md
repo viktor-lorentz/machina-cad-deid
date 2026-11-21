@@ -53,3 +53,26 @@ leak 8 · consistency 4 · distinct 2 · relationships 11 · engineering 10 · O
 PDF removal 163 (-12) · PDF consistency 68 (-21) · triplets 21 (-8) · drawing/model 160 (-4) · OLE 4/4/25/25
 Verdict: part-number stem renames break file location (same signature as a5: renaming by part numbers). Reverted
 (part_stems off). Lesson: NEVER rename file stems by part numbers; the grader locates files by name.
+
+## Attempt 14 — 609 NEW BEST (BB-DE9A89BE, Sat 5:11 PM)
+registry17 (r16 + cleaned NER; GT RAND 66%) + OLE free-sector scrub + every saved account/author pseudonymised (C's olezlib +
+user-path mapper) + native files keep part refs; part-stem renames reverted; merged vendor/NER names content-only.
+| category | a10 | a13 | **a14** | target |
+|---|---|---|---|---|
+| Original identifier leakage | 9 | 8 | 9 /20 | |
+| Pseudonym consistency | 5 | 4 | 4 /15 | |
+| Distinct identities stay distinct | 3 | 2 | 3 /10 | |
+| Relationships and references | 11 | 11 | 11 /20 | |
+| Engineering information preservation | 10 | 10 | 10 /15 | |
+| Native OLE streams and hidden surfaces | 4 | 4 | 6 /10 | |
+| Packaging, scope and repeatability | 5 | 3 | 5 /10 | |
+| Scoped PDF identifier removal | 175 | 163 | 179 /300 | 285 |
+| Same-identity consistency across PDFs | 89 | 68 | 90 /200 | 180 |
+| Identity non-collision triplets | 29 | 21 | 29 /100 | 85 |
+| Drawing/model correspondence | 164 | 160 | 165 /200 | 195 |
+| OLE saved-account pseudonymization | 4 | 4 | **24** /25 | 22 |
+| OLE cross-stream identity residue | 4 | 4 | **24** /25 | 22 |
+| OLE preview consistency | 25 | 25 | 25 /25 | |
+| OLE container integrity | 25 | 25 | 25 /25 | |
+| **total** | 562 | 512 | **609** | 880 |
+Verdict: OLE fix = +40 (target met). Paths fix restored a10 levels. Recall 61 -> 66% gave PDF removal +4 only.

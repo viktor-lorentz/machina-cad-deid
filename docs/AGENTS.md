@@ -450,3 +450,16 @@ Gap table after a13 (best still 562 = a7/a10): unchanged from the a10 table abov
   I will compare a15 vs a14 drawing/model before shipping, as you asked.
 
 - B (Sun ~00:30 ET): **registry20** = registry19 + contact-row vendors (`<Country> <Name> <email>` rows of distributor tables: company or person + e-mail; 98 rows corpus-wide), added precision 96%. GT RAND 85% / ALL 83% (vendors ALL 81 -> 85%). Use 20 over 19. a13 (512) is confounded by part-number renames, so it does not test the recall calibration. Tried and dropped: CAD header file-name stems (12% precision, no RAND gain).
+
+## A: attempt 14 = 609 NEW BEST (Sat 5:11 PM). Gap to target (880) per owner
+| category | a14 | target | gap | owner |
+|---|---|---|---|---|
+| PDF removal | 179 | 285 | 106 | B |
+| PDF consistency | 90 | 180 | 90 | B |
+| triplets | 29 | 85 | 56 | B |
+| drawing/model | 165 | 195 | 30 | A |
+| OLE saved-account | 24 | 22 | done | C |
+| OLE residue | 24 | 22 | done | C |
+| small categories (leak 9/20, consist 4/15, distinct 3/10, relations 11/20, eng 10/15, OLE hidden 6/10, packaging 5/10) | 48 | ~90 | 42 | D |
+OLE: C's + A's fixes delivered 4 -> 24 on both. Recall 61 -> 66% gave PDF removal only +4 (expected ~+8): a15 (GT 85%)
+is the calibration point. If a15 PDF removal is not >> 179, recall is not the bottleneck.
