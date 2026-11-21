@@ -400,3 +400,5 @@ post-processing every candidate value to scope=global. Also NER kinds mapped to 
 partno->part, username->account; 3.2k entries). Please make merge upgrade scope to global for candidate values.
 Remaining misses (~80): persons (title-block initials, lone surnames in author lists), vendors in a country-prefixed distributor table and
 short vendor acronyms, projects without cue. Next for B: title-block initials/persons.
+
+- B (Sat ~22:15 ET): **registry16f** = 16e + title-block persons/initials (`deid/persons.py`, 96 values, added precision 100%): RAND 82% / ALL 79% (persons RAND 73 -> 81%). Use 16f instead of 16e if the build has not started.
