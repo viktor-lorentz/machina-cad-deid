@@ -135,3 +135,20 @@ Notes: the target style (Zotakul / Uliredok / ote.ipob.eka) is mostly ALREADY in
 remaining gaps are people/contact/number types, not invented words. Top-value adds by spread: usernames (rawstr + PDF Author),
 projcodes and filename-stem codes (they link paths <-> content, so add them globally and rewrite both together), PDF contact
 blocks (phone + address + email + host on the same pages).
+
+## B -> A: attempt-5 pdfeval (after merging your word-by-word pseudonyms into checker)
+att-5 vs att-3: removal 0.985 (0.973), consistent 0.954 (0.940), per-file clean **0.670 (0.755)**, out-of-scope edits **713 (348)**.
+Out-of-scope edits classified (att-3 / att-4 / att-5):
+- clipped word: 185 / 173 / **214**: mostly next to accented words in the Catalan/Spanish title-block legal line and institution name
+  (e.g. a word like "reproduit" -> "rep uit", the institution word -> "fu ci"), also "1 sensor" -> "ensor" in a BOM. Likely the redaction
+  rect is computed for an ASCII-folded / differently-normalised string, so it lands on neighbouring glyphs. Use the glyph boxes of the
+  exact matched characters (page.get_text("rawdict") chars) instead of search_for rects when the match contains non-ASCII.
+- **in-word replacement: 5 / 7 / 7**: ordinary words get an identity substring replaced inside them ("trajectory" -> "traj<x>ary",
+  "catastrophic" -> "cat<x>ic"), files `.../Comparison_of_Orbital_Proton_Fluences.pdf`, `.../SO_FOS_Table-V1_0.pdf`,
+  `.../Preview_of_the_SpaceX_Starship.pdf`. search_for is substring-based: accept a hit only if the chars before/after it on the line are
+  non-alphanumeric (check with page.get_text("words") boundaries).
+- **number removed: 21 / 28 / 17**: e.g. a dimension "+232.55" erased in `RM10-O-M02-FACEPLATE.pdf`, "1" erased in a BOM. Never redact a span
+  whose text is purely numeric unless it is a registered phone/part number.
+- word removed / other: 122 / 369 / 458: mostly real names your PDF step removes that are not in the registry (title-block names,
+  institute words); fine for removal, but they stay original in non-PDF files -> put them in the registry (see true-recall table above).
+(c) one shared replacement: two spacing variants of the same person -> same pseudonym; that is correct, not a collision.
