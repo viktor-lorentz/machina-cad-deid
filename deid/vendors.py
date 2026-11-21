@@ -39,15 +39,24 @@ def _legal_names(t):
                 break
             if core.endswith(".") and core not in ("DR.", "Dr.", "St.", "Mt.", "Bros.", "spol.") and len(core) > 2 and start is not None:
                 break  # end of a previous sentence / previous company
-            if core[:1].isupper() or core in _CONN:
+            if core[:1].isupper() or core in _CONN or (core[:1].isalpha() and any(c.isupper() for c in core[1:])):
                 start = w0 + toks[i].start()
                 n += 1
-                if n >= 5:
+                if n >= 7:
                     break
             else:
                 break
         if start is None:
             continue
+        span = t[start:m.start()].split()
+        for j in range(len(span) - 1, 0, -1):  # "<postcode> <City> Name GmbH" inside the chain
+            if span[j - 1].rstrip(",").isdigit():
+                span = span[j + 1:] if j + 1 < len(span) else span[j:]
+                break
+        span = span[-5:]
+        if not span:
+            continue
+        start = m.start() - len(t[:m.start()]) + t[:m.start()].rfind(span[0], max(0, m.start() - 120))
         span = t[start:m.end()]
         span = re.sub(r"^(?:(?:&|und|and|de|of|\+|(?i:the|property|of|by|from|copyright|all|rights|reserved|made|for|to|at|with|see|contact|courtesy))\s+)+", "", span)
         if span and span[:1].isupper():
@@ -68,7 +77,7 @@ Elegoo|ELEGOO|Mean Well|MEAN WELL|Meanwell|Lumberg|Harting|HARTING|Amphenol|Weid
 Nanotec|Trinamic|TRINAMIC|Item Industrietechnik|Robert Bosch|Bosch Rexroth|Norelem|norelem|Ganter|Fastenal|Grainger|RS Components|Farnell|
 Newark|LCSC|Tektronix|Keysight|Rohde & Schwarz|Fluke|Vernier|OpenBuilds|ServoCity|Actobotics|goBILDA|GoBilda|REV Robotics|LulzBot|Lulzbot|
 Prusa|Creality|Ultimaker|Bondtech|Thomson Linear|Misumi USA|Accu|Automation Direct|AutomationDirect|Pimoroni|Waveshare|Sunon|Noctua|
-Delta Electronics|Nidec|Schaeffler|INA|Timken|Igus GmbH|Smooth On|Reprap Discount|Bambu Lab""".replace("\n", "").split("|")} - {""},
+Delta Electronics|Nidec|Schaeffler|Timken|Igus GmbH|Smooth On|Reprap Discount|Bambu Lab|Amazon|Amazon.com|Chilisin|JLCPCB|PCBWay|PEM|3M|AliExpress|Banggood|eBay|Hammond|Bud Industries|Keystone|Wiha|Wera|Misumi Europe|80/20 Inc|OpenBuilds Part Store""".replace("\n", "").split("|")} - {""},
                key=len, reverse=True)
 KNOWNRE = re.compile(r"(?<![A-Za-z0-9])(" + "|".join(re.escape(k) for k in KNOWN) + r")(?![A-Za-z0-9])")
 # software / CAD vendors are reported separately (risky: watermarks, STEP originating_system)
@@ -86,7 +95,7 @@ def _texts(path):
         if ext == "pdf":
             import fitz
             with fitz.open(path) as d:
-                for i in range(min(len(d), 8)):
+                for i in range(min(len(d), 40)):
                     yield d[i].get_text("text")
         elif ext in TEXT_EXT:
             with open(path, "rb") as fh:
@@ -155,7 +164,8 @@ def main(argv):
 # ---- selection: harvest TSV -> clean candidate list (kind<TAB>value) -------------------------------------------
 LEAD = re.compile(r"^(?:(?i:sole|written|permission|case|will|de|the|property|of|by|from|copyright|all|rights|reserved|made|for|to|at|with|"
                   r"see|contact|courtesy|and|or|is|a|an|distributed|produced|generated|licensed|under|trademark|trademarks|registered|"
-                  r"step caselib|in|on|use|this|that|our|your)[ ,]+)+")
+                  r"step caselib|in|on|use|this|that|our|your|while|when|if|as|please|thanks|thank|visit|supplied|sold|manufactured|provided|"
+                  r"purchased|bought|available|order|ordered|courtesy of|via|contact|email|call|note|notes|both|each|any|an?)[ ,]+)+")
 TAIL = re.compile(r"(?:[ ,.]+(?:All|All rights.*|Page|page|CC BY-SA|CC-BY.*|Rev.*|Ltd\. All))+$")
 GENERIC = {"author", "open cascade", "user", "users", "administrator", "admin", "sysadmin", "konstrukteur", "china", "unknown", "none",
            "managed by terraform", "pcbnew", "nist", "sdrc", "university", "seller", "buyer", "company", "national institute", "owner",
@@ -170,7 +180,7 @@ def select(harvest_tsv, out_tsv, min_count=1):
             n, src, v = l.rstrip("\n").split("\t")
         except ValueError:
             continue
-        if src == "software" or int(n) < min_count:
+        if int(n) < min_count:
             continue
         v = LEAD.sub("", v)
         v = TAIL.sub("", v).strip(" ,.;:-")
@@ -188,9 +198,9 @@ def select(harvest_tsv, out_tsv, min_count=1):
         if src in ("copy", "steporg") and re.fullmatch(r"(?:[A-Z][a-z]+\.? ){1,2}[A-Z][a-z]+", v) and not re.search(SUFFIX, v):
             kind = "person"
         seen.setdefault(v, (kind, src))
-    with open(out_tsv, "w") as fh:
+    with open(out_tsv, "w") as fh, open(out_tsv.replace(".tsv", "") + ".software.tsv", "w") as fs:
         for v, (kind, src) in seen.items():
-            fh.write(f"{kind}\t{v}\n")
+            (fs if src == "software" else fh).write(f"{kind}\t{v}\n")
     return len(seen)
 
 
