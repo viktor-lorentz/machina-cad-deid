@@ -247,6 +247,11 @@ def contacts_text(text: str) -> list[tuple[str, str]]:
     return [(v, k) for v, k in harvest_text(text) if k in ("email", "phone", "url", "domain")]
 
 
+FULLNAME_RX = re.compile(r"(?<![\w.])([A-ZÀ-Ý][a-zà-ÿ]{2,14})[ \t]+((?:[A-ZÀ-Ý][a-zà-ÿ]{1,20}[ \t]+)?"
+                         r"[A-ZÀ-Ý][a-zà-ÿ]{2,20})(?![\w])")
+FIRST_NAMES_ONLY_STOP = {"street", "road", "avenue", "university", "institute", "school", "college", "hall"}
+
+
 def harvest_text(text: str) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     for m in PROJECT_LABEL_RX.finditer(text):
@@ -309,6 +314,13 @@ def harvest_text(text: str) -> list[tuple[str, str]]:
             if n.split()[0].lower() in FIRST_NAMES and len(n.split()) >= 2:
                 out.append((_clean_name(n), "person"))
     out += _near_label_names(text)
+    for m in FULLNAME_RX.finditer(text):
+        first, rest = m.group(1), m.group(2).split()
+        fl = first.lower()
+        if fl in FIRST_NAMES and fl not in _common_words() and \
+                all(w.lower() not in TECH_STOP and w.lower() not in STOPWORDS and w.lower() not in FIRST_NAMES_ONLY_STOP
+                    and not (GERMAN_SUFFIX.search(w.lower()) and len(w) > 7) for w in rest):
+            out.append((first + " " + " ".join(rest), "person_free"))
     for rx in (ORG_RX, ORG_PREFIX_RX):
         for m in rx.finditer(text):
             n = _clean_name(m.group(1))

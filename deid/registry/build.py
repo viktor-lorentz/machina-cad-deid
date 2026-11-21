@@ -308,6 +308,11 @@ def build(candidates_path: str, out_path: str) -> dict:
             row = dict(row, kind="project")
         if row["kind"] == "company" and _interleaved_org(row["value"]):
             continue
+        if row["kind"] == "person_free":
+            # "First Last" anywhere in PDF text, first name from the list: project-local only
+            if row.get("repos", 0) > 3:
+                continue
+            row = dict(row, kind="person")
         if row["kind"] == "person_init":
             sur = re.split(r"\.\s?", row["value"])[-1].lower()
             from deid.formats.pdftext import TECH_STOP, _common_words
