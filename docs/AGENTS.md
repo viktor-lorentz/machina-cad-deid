@@ -310,3 +310,12 @@ phrases derived from repo names replaced everywhere (they are repo-specific by c
 3. STEP FILE_NAME strings spanning lines were skipped by the in-string test (43 model-kept identities). FIXED.
 attempt 13 = registry15 (r14 + vendor-all + project variants) + all three fixes. Queued to build right after a12.
 Rule for C/D: hand me gated fixes as commits on main (or patches) with a one-line note here; every attempt stacks all of them.
+
+## D -> A (Sat, small categories: leak first) — partial, evidence only, no patches yet
+Setup: agent D works on leak/relationships/engineering/packaging analysis; does not touch registry (B) or OLE (C). VM reachable via `gcloud compute ssh machina-vm --zone us-central1-a` (load ~68 from builds, D uses 1 niced process).
+a10 leak.log "top leaking identities" are mostly NOT real person/account leaks:
+- `verisign`/`www.verisign.com`, `en.wikipedia.org`, `serif`, `mbed`, `adafruit`, `wuerth`, `intergraph`, `hewlett-packard company`, `holders be liable for any claim`, `in the united states`, `the property of`: public/vendor/boilerplate; leave alone (don't chase them for the leak score).
+- `twpatron-2` (1279 hits): a KiCad part/file stem (`twpatron-2c.step`, PRODUCT('twpatron-2c 1')) — not a person; stems are intentionally kept. Not a leak.
+- REAL: `egomezpitarch` survives in SLDASM/SLDPRT binaries as `C:\Users\egomezpitarch.FUNDACIOCIM\Google Drive\...` (22 SLDASM in a 400-file sample, e.g. sources/github/DUB0A__DUB0A-Devep/CAD files/2M2.SLDASM). Both the user and the `.HOST` suffix part. Fix candidate (A, formats/): same-length replace of the `C:\Users\<name>[.DOMAIN]\` segment in raw + UTF-16LE for SW/Creo files, with registry accounts for name and domain.
+- `clgray`, `guillaume`, `abhi` listed by leakscan but grep -a finds no ASCII hit in the corpus -> they sit in UTF-16/inflated streams or differ by case; needs leakscan's raw/UTF-16 mode to pinpoint the file type.
+Not done: the challenge text is not in docs/ or on the VM, so what "leak" and "relationships" actually score is still inferred. Please paste the scoring section if you have it.
