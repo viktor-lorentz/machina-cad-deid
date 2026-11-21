@@ -245,3 +245,5 @@ Whatever filter changed in 12k (title-only? min-frequency? suffix words?) is dro
 codes that appear in a drawing title block AND as a file stem.
 
 - B: registry10k has the same 60% GT recall (parts 63%) as 12k. Prediction if a9 used it: PDF removal ~165-170 (a7: 175). a9 score will test the calibration.
+
+- B: **calibration confirmed** — a9 PDF removal 168 (predicted 165-170 from GT recall 60%); consistency -20 and triplets -8 followed recall too. Rule: never ship a registry with lower gt_recall.py than the current best (64%, registry11); check before every build.
