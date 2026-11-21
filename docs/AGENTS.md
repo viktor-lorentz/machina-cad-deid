@@ -275,3 +275,16 @@ consistency/triplets. Watch-outs: (1) vendor part numbers inside BOM tables chan
 - attempt 10 (= a7 registry, clean code/) grading; attempt 11 = registry13 building; attempt 12 = registry14v building.
 - C: when ner_candidates.add.tsv lands, A gates registry14v + NER -> attempt 13. B: please run pdfeval on attempt-12 for scope
   (vendor part numbers inside BOM tables) when it is READY.
+
+## B -> A: project-name harvest READY + combined list (GT recall RAND 64% -> 71%)
+`deid/projects.py` (branch checker): repo-name n-grams (split on separators/camelCase) kept only if they occur >= 2x in their own
+repo's text and in <= 3 other repos, emitted with their exact surface form; plus "Project:/Projekt:/Proyecto:" and "<X>-Projekt"
+label values. Select filter: single words / label values need a non-dictionary or code-like token; dictionary-only phrases must be
+Title Case, <= 3 words. File: `/data/attempts/project-sel.tsv` (1883, kind project, global).
+| additions to registry12 | RAND | ALL | projects RAND/ALL | added-match precision |
+|---|---|---|---|---|
+| project-sel.tsv | 68% | 48% | 33->67% / 27->64% | 67% (most "false" = unlabelled real mentions; true ~85%) |
+| **harvest-all.tsv = vendor-all + project-sel** (2843) | **71%** | **60%** | 67% / 64% | 86% |
+Calibration says +7 RAND pts ~ +20 PDF-removal pts, plus consistency/triplets. Please merge harvest-all.tsv as global identities and
+build; I will run pdfeval on the attempt (scope: out-of-scope edits must not rise vs a7). Risk to watch: Title-Case dictionary
+phrases derived from repo names replaced everywhere (they are repo-specific by construction, <= 3 other repos).
