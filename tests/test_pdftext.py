@@ -46,3 +46,23 @@ def test_rw_pdf_stream_rewrite_stays_decodable():
     p2 = pikepdf.open(io.BytesIO(out))
     data = p2.pages[0].Contents.read_bytes()  # raises if the Flate stream is corrupt
     assert b"Magnus Kjer" not in data and len(data) == len(content)
+
+
+def test_redaction_spares_tightly_spaced_neighbour_lines():
+    import fitz
+    from deid.registry.pseudonym import Mapper
+
+    doc = fitz.open()
+    p = doc.new_page()
+    p.insert_text((60, 100), "PROPERTY OF HOWARD HUGHES", fontsize=9)
+    p.insert_text((60, 111), "MEDICAL INSTITUTE. IT SHALL", fontsize=9)
+    p.insert_text((60, 121), "12.50 DRAWN Magnus Kjer 7.25", fontsize=9)
+    p.insert_text((60, 130), "3.175 4.40 9.99", fontsize=9)
+    m = Mapper()
+    m.add("HOWARD HUGHES MEDICAL INSTITUTE", "company")
+    m.add("Magnus Kjer", "person")
+    t = fitz.open(stream=pdftext.rewrite(doc.tobytes(), m), filetype="pdf")[0].get_text()
+    for keep in ("PROPERTY OF", "IT SHALL", "12.50", "7.25", "3.175", "4.40", "9.99"):
+        assert keep in t
+    assert "HOWARD" not in t and "Magnus" not in t
+    assert m.pseudonym("Magnus Kjer") in t

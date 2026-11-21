@@ -120,6 +120,7 @@ def run(root: str, out_path: str, workers: int | None = None) -> None:
     df: Counter = Counter()
     fmts: dict = defaultdict(Counter)
     ex: dict = defaultdict(list)
+    repos: dict = defaultdict(set)
     defects: dict[str, str] = {}
     with Pool(workers or os.cpu_count()) as pool:
         for i, (rel, e, cands, defect) in enumerate(
@@ -130,12 +131,14 @@ def run(root: str, out_path: str, workers: int | None = None) -> None:
             for key in set((re.sub(r"\s+", " ", v.strip()), k) for v, k in cands if v.strip()):
                 df[key] += 1
                 fmts[key][e] += 1
+                if len(repos[key]) < 50:
+                    repos[key].add("/".join(rel.split("/")[:3]))
                 if len(ex[key]) < 3:
                     ex[key].append(rel)
             if i % 20000 == 0:
                 print(f"  {i}", file=sys.stderr)
     rows = [
-        {"value": v, "kind": k, "files": n, "formats": dict(fmts[(v, k)].most_common(5)), "examples": ex[(v, k)]}
+        {"value": v, "kind": k, "files": n, "formats": dict(fmts[(v, k)].most_common(5)), "examples": ex[(v, k)], "repos": len(repos[(v, k)])}
         for (v, k), n in df.most_common()
     ]
     Path(out_path).write_text(json.dumps({"candidates": rows, "defects": defects}, indent=1))

@@ -82,6 +82,60 @@ def _clean_name(s: str) -> str:
     return " ".join(toks)
 
 
+NEAR_LABEL_RX = re.compile(
+    r"(?i)\b(?:drawn|checked|approved|designed|designer|reviewer|reviewed|issued|author|engineer|drafter|"
+    r"dessin(?:é|e)|v(?:é|e)rifi(?:é|e)|gezeichnet|gepr(?:ü|ue)ft|bearbeitet|disegnato|controllato|approvato|"
+    r"verificato|dibujado|revisado|aprobado|desenhado|verificado)\b")
+NAME_NEAR_RX = re.compile(r"(?<![\w.])([A-ZÀ-Ý][a-zà-ÿ]{3,20}|[A-ZÀ-Ý]{4,20})(?![\w])")
+INITIAL_NAME_RX = re.compile(r"(?<![\w.])([A-Z]\.\s?[A-ZÀ-Ý][a-zà-ÿ]{2,20})(?![\w])")
+TECH_STOP = set("""
+drawn checked approved designed designer reviewer reviewed issued author engineer drafter date scale sheet
+title material finish size revision weight mass description quantity tolerance tolerances projection
+dimensions general notes note section detail view assembly drawing part number code standard unless
+otherwise specified angle third first surface roughness treatment thread holes hole thru deep chamfer
+fillet radius typ ref zone change changes modified added removed release released rev issue status
+aluminium aluminum steel stainless brass copper plastic nylon delrin anodised anodized black white
+dessine verifie gezeichnet gepruft geprueft bearbeitet datum name masstab maßstab werkstoff blatt
+benennung zeichnung hinweis abmessungen toleranzen oberfläche disegnato controllato approvato verificato
+data scala foglio materiale descrizione quota tolleranze revisione dibujado revisado aprobado fecha
+escala hoja materiel matériau échelle feuille désignation nom projet drawings model models iso din ansi
+""".split())
+_COMMON: set | None = None
+
+
+def _common_words() -> set:
+    global _COMMON
+    if _COMMON is None:
+        _COMMON = set()
+        for p in ("/usr/share/dict/words", "/usr/share/dict/american-english"):
+            try:
+                with open(p, encoding="utf-8", errors="ignore") as f:
+                    _COMMON = {w.strip() for w in f if w.strip() and w.strip().islower()}
+                break
+            except OSError:
+                continue
+    return _COMMON
+
+
+def _near_label_names(text: str) -> list[tuple[str, str]]:
+    common = _common_words()
+    out = []
+    for lm in NEAR_LABEL_RX.finditer(text):
+        win = text[max(0, lm.start() - 90):lm.end() + 90]
+        for m in NAME_NEAR_RX.finditer(win):
+            w = m.group(1)
+            lw = w.lower()
+            stems = {lw, lw.rstrip("s"), re.sub(r"(ed|ing|ly|es|er)$", "", lw), re.sub(r"(d|ing)$", "", lw)}
+            if lw in TECH_STOP or lw in STOPWORDS or any(x in common for x in stems):
+                continue
+            out.append((w, "person_near"))
+        for m in INITIAL_NAME_RX.finditer(win):
+            sur = m.group(1).split(".")[-1].strip().lower()
+            if sur not in common and sur not in TECH_STOP:
+                out.append((m.group(1), "person_near"))
+    return out
+
+
 def _split_people(tokens: list[str]) -> list[str]:
     """Split 'Marcos Briones Jon Castillo' into ['Marcos Briones', 'Jon Castillo']."""
     people, cur = [], []
@@ -118,6 +172,7 @@ def harvest_text(text: str) -> list[tuple[str, str]]:
         for n in _split_people(m.group(1).split()):
             if n.split()[0].lower() in FIRST_NAMES and len(n.split()) >= 2:
                 out.append((_clean_name(n), "person"))
+    out += _near_label_names(text)
     for rx in (ORG_RX, ORG_PREFIX_RX):
         for m in rx.finditer(text):
             n = _clean_name(m.group(1))
@@ -188,9 +243,21 @@ def rewrite(data: bytes, mapper) -> bytes:
                 parts = [(a.strip(), b.strip()) for a, b in parts if len(a.strip()) >= 3]
             for seg, seg_rep in parts:
                 for rect in page.search_for(seg):
+                    # a hit wrapped over lines comes back as one rect per line:
+                    # give each rect only the matching slice of the pseudonym
+                    inside = re.sub(r"\s+", " ", page.get_textbox(rect)).strip()
+                    rep_here = seg_rep
+                    if inside and inside.lower() != seg.lower():
+                        k = seg.lower().find(inside.lower())
+                        if k >= 0:
+                            rep_here = seg_rep[k:k + len(inside)]
                     size = _font_size_at(page, rect) or max(4.0, rect.height * 0.8)
-                    placements.append((rect, seg_rep, size))
-                    page.add_redact_annot(rect, fill=None, cross_out=False)
+                    placements.append((rect, rep_here, size))
+                    # redact only the middle band: glyphs of this line cross it, glyphs of
+                    # tightly spaced neighbouring lines (dimensions, notes) do not
+                    h = rect.height
+                    band = fitz.Rect(rect.x0 + 0.5, rect.y0 + 0.35 * h, rect.x1 - 0.5, rect.y1 - 0.35 * h)
+                    page.add_redact_annot(band, fill=None, cross_out=False)
         if not placements:
             continue
         page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE,

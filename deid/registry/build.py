@@ -179,6 +179,12 @@ def build(candidates_path: str, out_path: str) -> dict:
     words = load_words()
     reg: dict[str, dict] = {}
     for row in data["candidates"]:
+        if row["kind"] == "person_near":
+            # surname found near a title-block label: keep only project-local words
+            # (language words recur across many unrelated repositories)
+            if row.get("repos", 0) > 5 or not re.search(r"[a-z]", row["value"], re.I):
+                continue
+            row = dict(row, kind="person")
         for value, kind in expand(row["value"], row["kind"]):
             v = re.sub(r"\s+", " ", clean(value))
             low = v.lower()
