@@ -55,3 +55,9 @@ Gaps (max-ours): PDF removal 214, PDF consistency 160, non-collision 96, drawing
   -> residue 11% on a 1200-file sample, sizes unchanged.
 - 39/46 strict-checker "unknown phones" are our own pseudonyms (checker artifact).
 - ~65% of sampled SolidWorks files are 2015+ non-OLE containers: untouched internals (IDEAS: SW container).
+- 10:00 CAUGHT before shipping: registry9 had "xmlns" (domain-acronym rule on xmlns.com) -> would corrupt every XML/SVG/3MF.
+  Guard: FORMAT_WORDS never registered AND filtered at load_mappers (test added). Also role mailboxes (contact@, info@)
+  no longer become accounts. attempt-7 restarted on registry10 (+aLIGO).
+- SW2015+ (non-OLE, ~65% of SW files): 255/257 sampled have registry identities inside raw-deflate sections
+  (marker 14 00 06 00 08 00). Untouched today -> next big lever after a7 (needs inflate/patch/deflate + size fields).
+- strict-checker artifacts: "no-pseudonym" Magnus case (pseudonym present), S. Aston vs S.Aston collisions.
