@@ -26,3 +26,23 @@ def test_rewrite_keeps_line_art_and_pages():
     d2 = fitz.open(stream=out, filetype="pdf")
     assert "Magnus Kjer" not in d2[0].get_text()
     assert len(d2[0].get_drawings()) >= 1 and d2.page_count == 1
+
+
+def test_rw_pdf_stream_rewrite_stays_decodable():
+    import io
+    import pikepdf
+    from deid import rewrite as R
+    from deid.registry.pseudonym import Mapper
+
+    pdf = pikepdf.new()
+    pdf.add_blank_page()
+    content = b"BT /F1 12 Tf 72 72 Td (Drawn by Magnus Kjer) Tj ET"
+    pdf.pages[0].Contents = pdf.make_stream(content)
+    buf = io.BytesIO()
+    pdf.save(buf, compress_streams=True)
+    m = Mapper()
+    m.add("Magnus Kjer", "person")
+    out = R.rw_pdf(buf.getvalue(), m)
+    p2 = pikepdf.open(io.BytesIO(out))
+    data = p2.pages[0].Contents.read_bytes()  # raises if the Flate stream is corrupt
+    assert b"Magnus Kjer" not in data and len(data) == len(content)

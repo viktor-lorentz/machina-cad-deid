@@ -8,6 +8,7 @@ rewrite cannot be validated. Unchanged files are hard-linked (no copy).
 from __future__ import annotations
 
 import io
+import zlib
 import json
 import os
 import sys
@@ -154,14 +155,20 @@ def rw_pdf(data: bytes, m: Mapper, streams: bool = True) -> bytes:
             if streams and isinstance(obj, pikepdf.Stream):
                 filt = obj.get("/Filter")
                 filters = [str(f) for f in (filt if isinstance(filt, pikepdf.Array) else [filt] if filt else [])]
-                if not any(f in ("/DCTDecode", "/JPXDecode", "/CCITTFaxDecode", "/JBIG2Decode") for f in filters):
+                is_font_or_image = (
+                    "/Length1" in obj or "/Length2" in obj
+                    or str(obj.get("/Subtype", "")) in ("/Image", "/Type1C", "/CIDFontType0C", "/OpenType")
+                )
+                if not is_font_or_image and not any(
+                        f in ("/DCTDecode", "/JPXDecode", "/CCITTFaxDecode", "/JBIG2Decode") for f in filters):
                     try:
                         raw = obj.read_bytes()
                     except Exception:
                         return
                     new = m.replace_bytes(raw, ("ascii", "utf-16-be"))
                     if new != raw:
-                        obj.write(new, filter=pikepdf.Name.FlateDecode)
+                        # write() expects data already encoded with `filter`: compress it ourselves
+                        obj.write(zlib.compress(new), filter=pikepdf.Name.FlateDecode, decode_parms=None)
                         changed = True
         elif isinstance(obj, pikepdf.Array):
             for i, v in enumerate(obj):
