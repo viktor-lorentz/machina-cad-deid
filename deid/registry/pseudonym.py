@@ -29,6 +29,11 @@ _CONS = "bdfgklmnprstvz"
 _VOW = "aeiou"
 _ALNUM = re.compile(r"[A-Za-z0-9]")
 _KEEP_WORDS = {"of", "de", "da", "del", "di", "du", "la", "le", "von", "van", "der", "den", "the", "and", "y", "e"}
+# Standards inside a multi-word identity (repo slug "tensile-testing-machine-astm-d638") stay verbatim, together
+# with their designation ("astm d638", "iso 2768", "din 912", "mil std 810g"): renaming them is out-of-scope.
+_STD_BODIES = {"astm", "iso", "din", "ansi", "asme", "jis", "iec", "ieee", "sae", "nema", "bsi", "afnor", "gost",
+               "ipc", "mil", "nasa", "std", "en", "bs", "ul", "csa", "nf", "uni", "gb"}
+_STD_DESIG = re.compile(r"[a-z]{0,2}\d{1,6}[a-z]?\d*")
 
 
 def norm(s: str) -> str:
@@ -111,10 +116,16 @@ class Mapper:
         runs = list(re.finditer(r"[a-z0-9]+", key))
         last_label = runs[-1] if runs and kind in ("email", "domain") and "." in key else None
         out, pos = [], 0
-        for r in runs:
+        std_next = False
+        for i, r in enumerate(runs):
             out.append(key[pos:r.start()])
             t = r.group(0)
-            keep = (len(t) == 1 and not t.isdigit()) or t in _KEEP_WORDS or r is last_label
+            # a standards body counts only when followed by a designation (keeps "uni" in emails pseudonymised)
+            is_std = (t in _STD_BODIES and i + 1 < len(runs)
+                      and (runs[i + 1].group(0) in _STD_BODIES or _STD_DESIG.fullmatch(runs[i + 1].group(0))))
+            keep = ((len(t) == 1 and not t.isdigit()) or t in _KEEP_WORDS or r is last_label or is_std
+                    or (std_next and _STD_DESIG.fullmatch(t)))
+            std_next = is_std
             out.append(t if keep else self._token(t))
             pos = r.end()
         out.append(key[pos:])
@@ -134,6 +145,8 @@ class Mapper:
                 self.kinds[key] = kind
                 self._auto.clear()
                 return cand
+            if cand == key and any(t in _STD_BODIES for t in re.findall(r"[a-z0-9]+", key)):
+                return key      # nothing but a standard ("ASTM D638"): not an identity, leave unmapped
         salt = 0
         while True:
             cand = _base(self.secret, key, salt) if salt < 50 else _random_base(self.secret, key, salt)
