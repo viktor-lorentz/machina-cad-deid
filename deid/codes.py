@@ -16,6 +16,9 @@ CUE = re.compile(r"(?i)part\s*(?:no|number|#|nr)|p/n\b|\bqty\b|quantity|bill of 
                  r"teilenummer|zeichnungsnummer|bestellnummer|sachnummer|order\s*(?:no|code|number)|\bmfr\b|manufacturer|vendor|supplier|"
                  r"dwg\.?\s*no|drawing\s*(?:no|number)|doc(?:ument)?\.?\s*(?:no|number)|item\s*no|catalog(?:ue)?\s*(?:no|number)|n[º°o]\s*de\s*pieza|"
                  r"referencia|r[ée]f[ée]rence|\bref\b|mpn|sku")
+CUE2 = re.compile(r"\bDWG\b|\bSHEET\s*\d+\s*(?:OF|/)\s*\d+|\bDRAWN\b|\bSCALE\s*:?\s*\d+\s*:\s*\d+|\bTITLE\s*:|\bDO NOT SCALE\b|"
+                  r"\bTHIRD ANGLE\b|\bTOLERANCES?\b|\bZeichnung|\bGezeichnet|\bMa[ßs]stab|\bEscala\b|\bPlano\b", re.I)
+REFDES = re.compile(r"\b[RCLUDQJKY]\d{1,3}\b")
 TOKEN = re.compile(r"(?<![A-Za-z0-9_\-\./])([A-Za-z0-9][A-Za-z0-9_\-\.\+]{2,48}[A-Za-z0-9\+])(?![A-Za-z0-9_\-])")
 EXCL = [re.compile(x, re.I) for x in (
     r"^\d+(?:[.,]\d+)?(?:mm|cm|m|in|inch|ft|kg|g|lb|lbs|n|nm|kn|v|vac|vdc|a|ma|w|kw|mah|hz|khz|mhz|rpm|deg|s|ms|um|µm|mpa|gpa|psi|bar|l|ml|pcs|x)?$",
@@ -63,7 +66,7 @@ def codeish(v):
 
 def scan_text(t, cue_ok=None):
     out = []
-    cue = CUE.search(t) is not None if cue_ok is None else cue_ok
+    cue = (CUE.search(t) is not None or CUE2.search(t) is not None or len(REFDES.findall(t)) >= 10) if cue_ok is None else cue_ok
     if cue:
         for m in TOKEN.finditer(t):
             v = m.group(1).rstrip(".")
@@ -182,7 +185,8 @@ def keep_value(kind, v, repos, max_repos):
         return len(v) >= 6 and re.search(r"[A-Za-zÄÖÜäöüß]{3}", v) is not None and re.search(r"\d", v) is not None
     if kind == "host":
         return not PUBLIC.search(v.lower())
-    if not v.isascii() or repos > max_repos or any(x.search(v) for x in EXCL2):
+    strong = len(v) >= 6 and len(re.findall(r"\d", v)) >= 3 and len(re.findall(r"[A-Za-z]", v)) >= 2
+    if not v.isascii() or repos > (50 if strong else max_repos) or any(x.search(v) for x in EXCL2):
         return False
     return True
 
