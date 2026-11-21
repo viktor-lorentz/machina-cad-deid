@@ -10,6 +10,7 @@ from __future__ import annotations
 import io
 import zlib
 import json
+import re
 import os
 import sys
 import zipfile
@@ -285,6 +286,19 @@ def rw_ole(data: bytes, m: Mapper) -> bytes:
     return ole_inplace.rewrite(data, transform)
 
 
+PROP_WORDS = {"author", "owner", "user", "users", "title", "subject", "company", "manager", "description",
+              "comments", "keywords", "category", "admin", "default", "unknown", "name", "designer", "engineer"}
+
+
+def _propagate_ok(v: str, kind: str | None) -> bool:
+    """Per-file propagation of field values into other streams/sections: people and accounts only,
+    never property-name words, standards, licences or numbers."""
+    from deid.formats.swx import field_ok
+
+    return (kind in ("person", "account") and field_ok(v) and v.strip().lower() not in PROP_WORDS
+            and not re.search(r"(?i)\biso\b|\bdin\b|licen|attribution|creative|terraform|\d{3}", v))
+
+
 def _ole_field_mapper(data: bytes):
     """Mapper holding only this file's identity-field values (author, last saved by, ...),
     with the corpus-wide pseudonyms from the full registry."""
@@ -309,7 +323,8 @@ def _ole_field_mapper(data: bytes):
                 continue
             for fmtid, pid, v in oleps.parse(ole.openstream(e).read()):
                 k = norm(v)
-                if oleps._kind(fmtid, pid) and len(v) >= 3 and k in allm.entries:
+                if oleps._kind(fmtid, pid) and len(v) >= 3 and k in allm.entries and \
+                        _propagate_ok(v, allm.kinds.get(k)):
                     lm.entries[k] = allm.entries[k]
                     lm.kinds[k] = allm.kinds.get(k, "account")
     finally:
@@ -399,7 +414,7 @@ def rw_swx(data: bytes, m: Mapper) -> bytes:
     local = Mapper(secret=allm.secret)
     for v, k in swx.harvest(data):
         key = norm(v)
-        if len(v) >= 3 and key in allm.entries:
+        if len(v) >= 3 and key in allm.entries and _propagate_ok(v, allm.kinds.get(key)):
             local.entries[key] = allm.entries[key]
             local.kinds[key] = allm.kinds.get(key, "account")
 
