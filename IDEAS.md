@@ -61,3 +61,7 @@ Gaps (max-ours): PDF removal 214, PDF consistency 160, non-collision 96, drawing
 - SW2015+ (non-OLE, ~65% of SW files): 255/257 sampled have registry identities inside raw-deflate sections
   (marker 14 00 06 00 08 00). Untouched today -> next big lever after a7 (needs inflate/patch/deflate + size fields).
 - strict-checker artifacts: "no-pseudonym" Magnus case (pseudonym present), S. Aston vs S.Aston collisions.
+- 10:00 swx.py (SW2015+): record = MARK|4B|crc32(u)|csize|usize|namelen|nibble-swapped name|raw deflate.
+  Rewrite: same-length replace, recompute CRC, recompress, pad zeros to csize (file length + offsets unchanged).
+  500-file test: section hits 3475 -> 72, 0 errors, all same length. Harvest docProps core/custom (creator,
+  lastModifiedBy, drawn/checked by) as *_field. -> attempt 8 (needs re-harvest).
