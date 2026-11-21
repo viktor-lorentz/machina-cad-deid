@@ -42,7 +42,7 @@ bg gr pt ie is ee lv lt si hr rs ua by ru kz tr il cn jp kr tw hk sg in id my th
 ar cl pe za eg info biz me dev ai tech xyz parts eu app cloud site online space store shop design
 engineering tools works systems science lab academy""".split())
 PLACEHOLDER = re.compile(r"^(?:NAUO|PERSON|ORGANIZATION|ORG|PER|PDF|SDR|PROD|PD)[-_]|_(?:NAME|ID|DESCRIPTION)$", re.I)
-VENDOR = re.compile(r"kicad|stepup|ksu mcad|zwcad|step tools|steptools|3ds\.com|netfabb|matplotlib|cairograph|"
+VENDOR = re.compile(r"^github\.com$|^gitlab\.com$|creativecommons\.org|free software foundation|^gnu\.org$|opensource\.org|^www\.github\.com$|kicad|stepup|ksu mcad|zwcad|step tools|steptools|3ds\.com|netfabb|matplotlib|cairograph|"
                     r"fontawesome|openstreetmap|osm\.org|naturalearth|protomaps|pdf-tools|aiim\.org|iec\.ch|"
                     r"solidworks|autodesk|dassault|siemens|ptc\.com|spatial|adobe|microsoft|freecad|onshape|"
                     r"opencascade|ugs|parasolid|acis|inventor|catia|creo|zwsoft|gstarcad|bricscad|draftsight|"
@@ -118,6 +118,48 @@ COMPONENT_VENDORS = re.compile(r"alibre|pcbnew|te connectivity|stmicro|mouser|sn
                                r"grabcad|mcmaster|misumi|thingiverse|printables|ultralibrarian|componentsearch", re.I)
 
 
+NAME_STOP = set("""
+advance bill materials material custom standard here quantity qty item part parts number no nº drawing
+drawings dwg sheet scale size rev revision date title approved checked drawn design designed tolerance
+tolerances iso din ansi gb jis unless otherwise specified dimensions finish weight mass description
+desenho pelo qual foi subsituido anders definiert information only welded aluminum steel stainless
+general notes note section detail view assembly unit units mm inch inches projection first third angle
+""".split())
+
+
+PHRASE_WORDS = set("""the of in and or for any be by to a an is are this that be their its it shall not from with
+without all rights reserved liable claim holders owners respective united states property copyright software
+provided as warranty damages notice permission""".split())
+
+
+def _bad_name(v: str, kind: str) -> bool:
+    toks = re.findall(r"[^\W\d_]+", v.lower())
+    if " " in v and v == v.lower() and sum(t in PHRASE_WORDS for t in toks) >= 1:
+        return True  # lowercase prose fragment, not a name
+    if re.search(r"\d", v) or re.fullmatch(r"[a-z]{2}-[A-Z]{2}", v):
+        return True
+    if not toks or all(t in NAME_STOP for t in toks):
+        return True
+    if kind == "person":
+        if sum(t in NAME_STOP for t in toks) >= max(1, len(toks) // 2):
+            return True
+        if len(toks) == 1 and (v.isupper() or len(v) <= 4):
+            return True
+    if kind == "company":
+        if toks[-1] in NAME_STOP or len(re.sub(r"\W", "", v)) <= 3:
+            return True
+        if re.search(r"(?i)\bfor information only\b", v):
+            return True
+    return False
+
+
+STANDARD_CODE = re.compile(
+    r"(?i)^(?:iso|din|en|gb|gbt|ansi|asme|jis|uni|iec|nema|aisi|sae|astm|bs|nf|csa|ul|ieee|ipc|mil|"
+    r"rev|ver|version|v\d|r\d|m\d|sheet|page|fig|draft|copy|scan|img|image|dsc|screenshot|photo|"
+    r"untitled|drawing|part|assembly|assy|asm|model|test|sample|new|old|backup|final)(?=[-_.\d]|$)"
+    r"|^\d+x\d+|^[mM]\d+x\d+|x\d+mm$|^\d{4}-\d{2}-\d{2}")
+
+
 def is_junk(v: str, kind: str, files: int, from_path: bool) -> bool:
     if from_path:
         return False
@@ -127,6 +169,12 @@ def is_junk(v: str, kind: str, files: int, from_path: bool) -> bool:
     if a <= 4 and (files <= 1 or re.search(r"\d", v)):
         return True
     if kind == "account" and not re.search(r"[aeiouy]", v, re.I):
+        return True
+    if kind in ("person", "company", "account", "project") and " " in v and _bad_name(v, kind):
+        return True
+    if kind == "part":
+        return False
+    if kind in ("person", "company") and _bad_name(v, kind):
         return True
     # odd internal casing like 'BgfF' or 'aBCd' from binary noise
     core = re.sub(r"[^A-Za-z]", "", v)
@@ -139,7 +187,33 @@ def build(candidates_path: str, out_path: str) -> dict:
     data = json.loads(Path(candidates_path).read_text())
     words = load_words()
     reg: dict[str, dict] = {}
+    field_rows = [r for r in data["candidates"] if r["kind"].endswith("_field")]
     for row in data["candidates"]:
+        if row["kind"] == "person_near":
+            # surname found near a title-block label: keep only project-local words
+            # (language words recur across many unrelated repositories)
+            from deid.formats.pdftext import near_word_ok
+
+            last = row["value"].split(".")[-1].strip()
+            if row.get("repos", 0) > 5 or not re.search(r"[a-z]", row["value"], re.I) or not near_word_ok(last):
+                continue
+            row = dict(row, kind="person")
+        if row["kind"] in ("partno", "dwgno"):
+            # DEID_PARTS: none (default) | labels (PDF drawing-number labels only) | all
+            mode = os.environ.get("DEID_PARTS", "none")
+            if mode == "none" or (mode == "labels" and row["kind"] != "dwgno"):
+                continue
+            # identifying part / document numbers: project-local codes only
+            v0 = row["value"]
+            if row.get("repos", 0) > 5 or STANDARD_CODE.search(v0) or re.fullmatch(r"(?i)v?\d+([._]\d+)+[a-z]?", v0):
+                continue
+            row = dict(row, kind="part")
+        field_kind = None
+        if row["kind"].endswith("_field"):
+            # explicit identity field (OLE author / last saved by): always pseudonymised in
+            # that field, even when the value is a generic or common word
+            field_kind = row["kind"][:-6]
+            row = dict(row, kind=field_kind)
         for value, kind in expand(row["value"], row["kind"]):
             v = re.sub(r"\s+", " ", clean(value))
             low = v.lower()
@@ -150,6 +224,8 @@ def build(candidates_path: str, out_path: str) -> dict:
             if is_junk(v, kind, row["files"], _from_path(row) and value == row["value"]):
                 continue
             if kind == "domain" and not valid_host(v):
+                continue
+            if kind == "phone" and len(re.sub(r"\D", "", v)) < 8:
                 continue
             if not v or alnum_len(v) < 2 or len(v) > 120:
                 continue
@@ -169,6 +245,10 @@ def build(candidates_path: str, out_path: str) -> dict:
             if prev is None or (prev["scope"] == "path" and scope == "global"):
                 reg[low] = {"value": v, "kind": kind, "scope": scope,
                             "files": row["files"] if prev is None else max(prev["files"], row["files"])}
+    for row in field_rows:
+        v = re.sub(r"\s+", " ", clean(row["value"]))
+        if v and v.lower() not in reg and alnum_len(v) >= 2 and len(v) <= 80 and not PLACEHOLDER.search(v):
+            reg[v.lower()] = {"value": v, "kind": row["kind"][:-6], "scope": "field", "files": row["files"]}
     out = {"identities": sorted(reg.values(), key=lambda r: -r["files"]),
            "defects": data.get("defects", {})}
     Path(out_path).write_text(json.dumps(out, indent=1))

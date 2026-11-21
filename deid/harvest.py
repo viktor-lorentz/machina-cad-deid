@@ -15,7 +15,7 @@ from multiprocessing import Pool
 from pathlib import Path
 
 from deid import textscan
-from deid.formats import meta, step
+from deid.formats import meta, oleps, pdftext, step
 
 MAX_READ = 64 * 1024 * 1024
 OLE_MAGIC = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
@@ -26,6 +26,37 @@ TEXTLIKE = {"svg", "dxf", "obj", "wrl", "mtl", "txt", "md", "csv", "xml", "json"
 def ext_of(path: str) -> str:
     name = path.rsplit("/", 1)[-1]
     return name.rsplit(".", 1)[-1].lower() if "." in name else ""
+
+
+PARTNO_RX = re.compile(r"(?<![A-Za-z0-9])([A-Za-z][A-Za-z0-9]{0,9}(?:[-_.][A-Za-z0-9]{1,10}){0,6}?[-_]?\d[A-Za-z0-9]*"
+                       r"(?:[-_][A-Za-z0-9]{1,10}){0,5})(?![A-Za-z0-9])")
+
+
+def part_numbers(name: str) -> list[tuple[str, str]]:
+    """Part / document / project codes in a file or folder name, e.g. D1900350, TA00-04-0001,
+    ICUB3_014_P_109, NNP-DWG-140-007-002 (filtered again at registry build)."""
+    def ok(v: str) -> bool:
+        nd = len(re.findall(r"\d", v))
+        if v.isdigit():
+            return 6 <= len(v) <= 12
+        return 5 <= len(v) <= 40 and nd >= 3 and re.search(r"[A-Za-z]", v) is not None
+
+    out = set()
+    for m in PARTNO_RX.finditer(name):
+        v = m.group(1).strip("-_.")
+        if ok(v):
+            out.add(v)
+        segs = re.split(r"([-_.])", v)
+        # core: prefix up to the last segment carrying >= 3 digits (drops _rev_A1, -v7, -Drawing)
+        last = max((i for i, sg in enumerate(segs) if len(re.findall(r"\d", sg)) >= 3), default=-1)
+        if last >= 0:
+            core = "".join(segs[:last + 1]).strip("-_.")
+            if ok(core):
+                out.add(core)
+            for sg in segs[::2]:
+                if ok(sg):
+                    out.add(sg)
+    return [(v, "partno") for v in out]
 
 
 def path_identities(rel: str) -> list[tuple[str, str]]:
@@ -79,6 +110,7 @@ def harvest_file(args: tuple[str, str]) -> tuple[str, str, list[tuple[str, str]]
             cands += textscan.scan(data[:200000])
         elif e == "pdf" or head.startswith(b"%PDF"):
             cands += meta.pdf(data)
+            cands += pdftext.harvest(data)
             cands += textscan.scan(data[:2_000_000])
         elif e in ("igs", "iges"):
             cands += meta.iges(data)
@@ -87,6 +119,7 @@ def harvest_file(args: tuple[str, str]) -> tuple[str, str, list[tuple[str, str]]
             cands += meta.zipxml(data)
         elif head.startswith(OLE_MAGIC):
             cands += meta.ole(data)
+            cands += oleps.harvest(data)
             cands += textscan.scan(data)
         elif head.startswith(b"#UGC:"):
             cands += meta.creo(data)
@@ -100,6 +133,8 @@ def harvest_file(args: tuple[str, str]) -> tuple[str, str, list[tuple[str, str]]
     except Exception as ex:  # noqa: BLE001
         defect = f"error:{type(ex).__name__}"
     cands += path_identities(rel)
+    base = rel.rsplit("/", 1)[-1]
+    cands += part_numbers(base.rsplit(".", 1)[0] if "." in base else base)
     return rel, e, cands, defect
 
 
@@ -118,6 +153,7 @@ def run(root: str, out_path: str, workers: int | None = None) -> None:
     df: Counter = Counter()
     fmts: dict = defaultdict(Counter)
     ex: dict = defaultdict(list)
+    repos: dict = defaultdict(set)
     defects: dict[str, str] = {}
     with Pool(workers or os.cpu_count()) as pool:
         for i, (rel, e, cands, defect) in enumerate(
@@ -128,12 +164,14 @@ def run(root: str, out_path: str, workers: int | None = None) -> None:
             for key in set((re.sub(r"\s+", " ", v.strip()), k) for v, k in cands if v.strip()):
                 df[key] += 1
                 fmts[key][e] += 1
+                if len(repos[key]) < 50:
+                    repos[key].add("/".join(rel.split("/")[:3]))
                 if len(ex[key]) < 3:
                     ex[key].append(rel)
             if i % 20000 == 0:
                 print(f"  {i}", file=sys.stderr)
     rows = [
-        {"value": v, "kind": k, "files": n, "formats": dict(fmts[(v, k)].most_common(5)), "examples": ex[(v, k)]}
+        {"value": v, "kind": k, "files": n, "formats": dict(fmts[(v, k)].most_common(5)), "examples": ex[(v, k)], "repos": len(repos[(v, k)])}
         for (v, k), n in df.most_common()
     ]
     Path(out_path).write_text(json.dumps({"candidates": rows, "defects": defects}, indent=1))

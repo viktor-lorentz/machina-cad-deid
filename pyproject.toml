@@ -8,6 +8,8 @@ license = { text = "MIT" }
 dependencies = [
   "olefile==0.47",
   "pikepdf==9.4.2",
+  "pymupdf==1.24.14",
+  "pyahocorasick==2.1.0",
   "pillow==11.0.0",
   "tqdm==4.67.1",
 ]

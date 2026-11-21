@@ -28,6 +28,7 @@ import ahocorasick
 _CONS = "bdfgklmnprstvz"
 _VOW = "aeiou"
 _ALNUM = re.compile(r"[A-Za-z0-9]")
+_KEEP_WORDS = {"of", "de", "da", "del", "di", "du", "la", "le", "von", "van", "der", "den", "the", "and", "y", "e"}
 
 
 def norm(s: str) -> str:
@@ -86,6 +87,38 @@ class Mapper:
     kinds: dict[str, str] = field(default_factory=dict)
     _taken: set[str] = field(default_factory=set)
     _auto: dict = field(default_factory=dict)
+    _tok: dict = field(default_factory=dict)        # token -> pseudo token (injective)
+    _tok_taken: set = field(default_factory=set)
+
+    def _token(self, tok: str) -> str:
+        """Pseudonym of one lowercase word; the same word maps to the same pseudo-word everywhere."""
+        if tok in self._tok:
+            return self._tok[tok]
+        for salt in range(300):
+            sec = self.secret + b"|tok"
+            cand = _base(sec, tok, salt) if salt < 50 else _random_base(sec, tok, salt)
+            if cand != tok and cand not in self._tok_taken:
+                break
+        else:
+            cand = tok  # space exhausted (1-2 letter words): leave as is
+        self._tok[tok] = cand
+        self._tok_taken.add(cand)
+        return cand
+
+    def _compose(self, key: str, kind: str) -> str:
+        """Word-by-word pseudonym: 'l. spruyt' and 'spruyt' share the surname pseudonym,
+        'user@mek.dtu.dk' reuses the pseudonyms of 'user' and 'dtu'."""
+        runs = list(re.finditer(r"[a-z0-9]+", key))
+        last_label = runs[-1] if runs and kind in ("email", "domain") and "." in key else None
+        out, pos = [], 0
+        for r in runs:
+            out.append(key[pos:r.start()])
+            t = r.group(0)
+            keep = (len(t) == 1 and not t.isdigit()) or t in _KEEP_WORDS or r is last_label
+            out.append(t if keep else self._token(t))
+            pos = r.end()
+        out.append(key[pos:])
+        return "".join(out)
 
     def add(self, original: str, kind: str = "name") -> str:
         key = norm(original)
@@ -93,6 +126,14 @@ class Mapper:
             return key
         if key in self.entries:
             return self.entries[key]
+        if kind != "phone":
+            cand = self._compose(key, kind)
+            if cand != key and cand not in self._taken and cand not in self.entries:
+                self._taken.add(cand)
+                self.entries[key] = cand
+                self.kinds[key] = kind
+                self._auto.clear()
+                return cand
         salt = 0
         while True:
             cand = _base(self.secret, key, salt) if salt < 50 else _random_base(self.secret, key, salt)
@@ -115,9 +156,10 @@ class Mapper:
         if enc not in self._auto:
             A = ahocorasick.Automaton(ahocorasick.STORE_ANY, ahocorasick.KEY_STRING)
             n = 0
+            codec = "utf-8" if enc == "ascii" else enc  # ASCII pass also matches UTF-8 accented names
             for key in self.entries:
                 try:
-                    kb = key.encode(enc)
+                    kb = key.encode(codec)
                 except UnicodeEncodeError:
                     continue
                 A.add_word(kb.decode("latin-1"), (len(kb), key))
@@ -163,8 +205,12 @@ class Mapper:
             for s, e, key in hits:
                 if accept is not None and not accept(src, s, e):
                     continue
-                occ = src[s:e].decode(enc, "replace")
-                rep = self.pseudonym(occ).encode(enc, "replace")
+                codec = "utf-8" if enc == "ascii" else enc
+                try:
+                    occ = src[s:e].decode(codec)
+                    rep = self.pseudonym(occ).encode(codec)
+                except (UnicodeError, KeyError):
+                    continue
                 if len(rep) == e - s:
                     buf[s:e] = rep
         return bytes(buf) if buf is not None else data

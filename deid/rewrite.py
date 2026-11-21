@@ -8,6 +8,7 @@ rewrite cannot be validated. Unchanged files are hard-linked (no copy).
 from __future__ import annotations
 
 import io
+import zlib
 import json
 import os
 import sys
@@ -117,6 +118,25 @@ def rw_zip(data: bytes, m: Mapper, name_map=None, depth: int = 0) -> bytes:
     return out
 
 
+def _pdf_render_warnings(data: bytes, max_pages: int = 4) -> int:
+    """Count MuPDF warnings while opening and rendering the first pages at low resolution."""
+    import fitz
+
+    fitz.TOOLS.mupdf_display_errors(False)
+    fitz.TOOLS.reset_mupdf_warnings()
+    try:
+        doc = fitz.open(stream=data, filetype="pdf")
+        for i, page in enumerate(doc):
+            if i >= max_pages:
+                break
+            page.get_text()
+            page.get_pixmap(dpi=12)
+    except Exception:
+        return 10**6
+    w = fitz.TOOLS.mupdf_warnings()
+    return len(w.splitlines()) if w else 0
+
+
 def rw_pdf(data: bytes, m: Mapper, streams: bool = True) -> bytes:
     import pikepdf
 
@@ -154,14 +174,20 @@ def rw_pdf(data: bytes, m: Mapper, streams: bool = True) -> bytes:
             if streams and isinstance(obj, pikepdf.Stream):
                 filt = obj.get("/Filter")
                 filters = [str(f) for f in (filt if isinstance(filt, pikepdf.Array) else [filt] if filt else [])]
-                if not any(f in ("/DCTDecode", "/JPXDecode", "/CCITTFaxDecode", "/JBIG2Decode") for f in filters):
+                is_font_or_image = (
+                    "/Length1" in obj or "/Length2" in obj
+                    or str(obj.get("/Subtype", "")) in ("/Image", "/Type1C", "/CIDFontType0C", "/OpenType")
+                )
+                if not is_font_or_image and not any(
+                        f in ("/DCTDecode", "/JPXDecode", "/CCITTFaxDecode", "/JBIG2Decode") for f in filters):
                     try:
                         raw = obj.read_bytes()
                     except Exception:
                         return
                     new = m.replace_bytes(raw, ("ascii", "utf-16-be"))
                     if new != raw:
-                        obj.write(new, filter=pikepdf.Name.FlateDecode)
+                        # write() expects data already encoded with `filter`: compress it ourselves
+                        obj.write(zlib.compress(new), filter=pikepdf.Name.FlateDecode, decode_parms=None)
                         changed = True
         elif isinstance(obj, pikepdf.Array):
             for i, v in enumerate(obj):
@@ -189,29 +215,26 @@ def rw_pdf(data: bytes, m: Mapper, streams: bool = True) -> bytes:
 
 
 def rw_ole(data: bytes, m: Mapper) -> bytes:
-    import olefile
+    """Same-length rewrite of every OLE stream, patched in place (mini-stream safe).
 
-    bio = io.BytesIO(data)
-    ole = olefile.OleFileIO(bio, write_mode=True)
-    changed = False
-    for entry in ole.listdir(streams=True, storages=False):
-        try:
-            if ole.get_size(entry) > 8_000_000:
-                continue
-            body = ole.openstream(entry).read()
-        except Exception:
-            continue
-        is_props = entry[-1].startswith("\x05")
-        new = m.replace_bytes(body, ("ascii", "utf-16-le")) if is_props else _guarded(body, m)
-        if new != body and len(new) == len(body):
-            ole.write_stream(entry, new)
-            changed = True
-    ole.close()
-    if not changed:
-        return data
-    res = bio.getvalue()
-    olefile.OleFileIO(io.BytesIO(res)).close()
-    return res
+    Property-set streams (names starting with \x05) hold author / last-saved-by
+    / company strings: full replacement. Other streams: only matches inside long
+    plain-string runs, so compressed or binary payloads are never touched.
+    """
+    from deid.formats import ole_inplace
+
+    def transform(name: str, body: bytes) -> bytes:
+        if name.startswith("\x05"):
+            from deid.formats import oleps
+
+            body = m.replace_bytes(body, ("ascii", "utf-16-le"))
+            return oleps.rewrite_fields(body, G.get("allm") or m)
+        # other streams: short length-prefixed strings (user names, paths) are
+        # missed by run-guarding; a word-bounded match of a registered name of
+        # >=5 bytes does not occur by chance in binary data
+        return m.replace_bytes(body, ("ascii", "utf-16-le"), accept=lambda src, a, b: b - a >= 5)
+
+    return ole_inplace.rewrite(data, transform)
 
 
 def _guarded(body: bytes, m: Mapper) -> bytes:
@@ -243,10 +266,22 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
     if e == "stl":
         return rw_stl(data, m)
     if head.startswith(b"%PDF") or e == "pdf":
+        from deid.formats import pdftext
+
+        orig = data
         try:
-            return rw_pdf(data, m)
+            data = pdftext.rewrite(data, m)
         except Exception:
-            return rw_pdf(data, m, streams=False)
+            pass
+        try:
+            out = rw_pdf(data, m)
+        except Exception:
+            out = rw_pdf(data, m, streams=False)
+        if out != orig and _pdf_render_warnings(out) > _pdf_render_warnings(orig):
+            # something we touched no longer renders cleanly: keep the safest variant
+            safe = rw_pdf(orig, m, streams=False)
+            return safe if _pdf_render_warnings(safe) <= _pdf_render_warnings(orig) else orig
+        return out
     if head.startswith(b"PK\x03\x04") and (e in ZIP_EXT) and depth < 4:
         if e in ARCHIVE_EXT and not G.get("archives", False):
             return data
@@ -255,7 +290,7 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
     if head.startswith(OLE_MAGIC):
         try:
             return rw_ole(data, m)
-        except NotImplementedError:
+        except Exception:
             # olefile cannot rewrite mini-stream entries; same-length patch of
             # plain-string runs in the container keeps every sector offset valid
             out = _guarded(data, m)

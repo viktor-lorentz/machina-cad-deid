@@ -45,3 +45,15 @@ def test_short_names_never_hang():
     for a, b in itertools.product("abcdefghijklmnopqrstuvwxyz", repeat=2):
         m.add(a + b)
     assert len(m.entries) > 300
+
+
+def test_compositional_consistency():
+    m = Mapper()
+    m.add("L. Spruyt", "person")
+    m.add("Spruyt", "person")
+    m.add("mbokj@mek.dtu.dk", "email")
+    m.add("mbokj", "account")
+    m.add("dtu.dk", "domain")
+    assert m.pseudonym("L. Spruyt").split()[-1] == m.pseudonym("Spruyt")
+    local, dom = m.pseudonym("mbokj@mek.dtu.dk").split("@")
+    assert local == m.pseudonym("mbokj") and dom.endswith(m.pseudonym("dtu.dk"))

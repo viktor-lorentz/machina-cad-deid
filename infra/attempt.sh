@@ -7,7 +7,7 @@ N="$1"; shift
 FLAGS="$*"
 CODE=/data/code
 OUT=/data/attempts/attempt-$N
-REG=/data/registry/registry.json
+REG=${REG:-/data/registry/registry.json}
 PY=$CODE/.venv/bin/python
 export PYTHONUNBUFFERED=1
 cd "$CODE"
@@ -21,7 +21,8 @@ T1=$(date +%s); echo "== rewrite took $((T1-T0))s"
 mv "$OUT/rewrite-results.json" "/data/attempts/attempt-$N.results.json"
 $PY -m deid.cli leakscan "$OUT/corpus" --registry "$REG" > /dev/null 2> "/data/attempts/attempt-$N.leak.log" || true
 tail -3 "/data/attempts/attempt-$N.leak.log"
-$PY -m deid.cli check /data/input "$OUT/corpus" --results "/data/attempts/attempt-$N.results.json" --registry "$REG" 2>&1 | tee "/data/attempts/attempt-$N.check.log" | head -1
+$PY -m deid.cli check /data/input "$OUT/corpus" --results "/data/attempts/attempt-$N.results.json" --registry "$REG" > "/data/attempts/attempt-$N.check.log" 2>&1 || true
+head -1 "/data/attempts/attempt-$N.check.log"
 T2=$(date +%s); echo "== scans took $((T2-T1))s"
 # code/: exact source at this commit + pinned dependency versions
 mkdir -p "$OUT/code"
