@@ -28,3 +28,9 @@ leak 9/20 · consistency 5/15 · distinct 3/10 · relationships 11/20 · enginee
 PDF removal 175/300 · PDF consistency 89/200 · triplets 29/100 · drawing/model 164/200 · OLE acct 4/25 · OLE residue 4/25 · preview 25 · integrity 25
 Finding: native renames 399 -> 131 did NOT move drawing/model (164). Remaining -11 vs a3 likely = part numbers replaced in
 drawing text while the model file keeps its original name (paths exclude parts since a6).
+
+## Attempt 8 — 553 (BB-9ACD7430, Sat 11:30 AM ET)
+a7 + SolidWorks 2015+ section rewrite + SW docProps harvest (registry11).
+leak 9 · consistency 5 · distinct 2 (-1) · relationships 10 (-1) · engineering 10 · OLE hidden 4 · packaging 2 (-3) ·
+PDF removal 175 · PDF consistency 89 · triplets 29 · drawing/model 160 (-4) · OLE acct 4 · residue 4 · preview 25 · integrity 25
+Verdict: SW2015 rewrite is net negative (-9), no category gained. Disabled (G["swx"]=False) from attempt 10 on.
