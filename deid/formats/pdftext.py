@@ -108,8 +108,7 @@ def harvest_text(text: str) -> list[tuple[str, str]]:
             continue
         labelled = re.search(r"(?i)(?:tel|phone|fax|t(?:é|e)l(?:é|e)fono|mobile|mob|cell|tlf)\.?\s*[:.]?\s*$",
                              text[max(0, m.start() - 16):m.start()])
-        spaced = len(re.findall(r"\d+", ph)) >= 4 and "-" not in ph
-        if ph.startswith("+") or ph.startswith("(") or labelled or spaced:
+        if (ph.startswith("+") and len(digits) >= 10) or labelled:
             out.append((ph, "phone"))
     for m in LABEL_RX.finditer(text):
         n = _clean_name(m.group(1))
