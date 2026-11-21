@@ -69,7 +69,14 @@ _ORG = re.compile(r"\b([A-Z][\w&.-]{1,30}(?:[ ]+[A-Z][\w&.-]{1,30}){0,4})[ ,]+(I
                   r"S\.A\.|B\.V\.|S\.r\.l\.|SRL|Pty|Limited|Co\., Ltd)\b\.?")
 _UNI = re.compile(r"\b((?:University|Institute|College|Universit[a-z]+|Laboratory)[ ]+of[ ]+[A-Z][a-z]+(?:[ ]+[A-Z][a-z]+){0,3}"
                   r"|[A-Z][a-z]+(?:[ ]+[A-Z][a-z]+){0,3}[ ]+(?:University|Institute|Universit[a-z]+))\b")
-_COPY = re.compile(r"(?:\u00a9|\(c\)|(?i:copyright))\s*(?:\d{4}[-, ]*)*\s*([A-Z][\w&.-]{1,30}(?:[ ]+[A-Z][\w&.-]{1,30}){0,4})")
+_COPY = re.compile(r"(?:\u00a9|(?i:copyright))\s*(?:\d{4}[-, ]*)*\s*([A-Z][\w&.-]{1,30}(?:[ ]+[A-Z][\w&.-]{1,30}){0,4})")
+
+
+_TB = {"checked", "date", "approved", "materials", "material", "revision", "rev", "title", "page", "name", "item",
+       "scale", "sheet", "size", "dwg", "drawn", "designed", "calculator", "tolerances", "select", "pt", "qty", "part",
+       "number", "no", "description", "finish", "weight", "units", "for", "information", "only", "all", "rights",
+       "reserved", "the", "this", "dec", "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov",
+       "a0", "a1", "a2", "a3", "a4", "by", "assembly", "smooth", "idler", "do", "not", "unless", "otherwise"}
 
 
 def unknown_candidates(text, ex):
@@ -80,6 +87,9 @@ def unknown_candidates(text, ex):
     for rx, kind in ((_LABEL, "label-name"), (_ORG, "company"), (_UNI, "institution"), (_COPY, "copyright")):
         for mt in rx.finditer(text):
             v = mt.group(0) if kind in ("company", "institution") else mt.group(1)
+            toks = re.findall(r"[a-z0-9]+", v.lower())
+            if toks and toks[0] in _TB:
+                continue
             if not ex.explained(v):
                 out.append((kind, v.strip()))
     c, samples = Counter(), {}
