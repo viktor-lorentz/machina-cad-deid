@@ -34,7 +34,10 @@ G: dict = {}  # per-worker globals
 
 # ---------------------------------------------------------------- registry
 def load_mappers(registry_path: str, secret: bytes) -> tuple[Mapper, Mapper]:
+    from deid.registry.build import FORMAT_WORDS
+
     reg = json.loads(Path(registry_path).read_text())
+    reg["identities"] = [r for r in reg["identities"] if r["value"].lower().strip() not in FORMAT_WORDS]
     allm, content = Mapper(secret=secret), Mapper(secret=secret)
     for r in reg["identities"]:
         allm.add(r["value"], r["kind"])

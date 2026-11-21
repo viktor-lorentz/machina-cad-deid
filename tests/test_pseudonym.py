@@ -57,3 +57,13 @@ def test_compositional_consistency():
     assert m.pseudonym("L. Spruyt").split()[-1] == m.pseudonym("Spruyt")
     local, dom = m.pseudonym("mbokj@mek.dtu.dk").split("@")
     assert local == m.pseudonym("mbokj") and dom.endswith(m.pseudonym("dtu.dk"))
+
+
+def test_format_words_never_loaded(tmp_path):
+    import json
+    from deid.rewrite import load_mappers
+    p = tmp_path / "r.json"
+    p.write_text(json.dumps({"identities": [{"value": "xmlns", "kind": "company", "scope": "global", "files": 9},
+                                            {"value": "Jane Roe", "kind": "person", "scope": "global", "files": 2}]}))
+    allm, content = load_mappers(str(p), b"k")
+    assert "xmlns" not in content.entries and "jane roe" in content.entries

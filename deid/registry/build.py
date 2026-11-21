@@ -205,7 +205,15 @@ def _interleaved_org(v: str) -> bool:
                                                {"technology", "engineering", "science", "sciences", "of", "and"})
 
 
+# file-format keywords and standards bodies: never identities (replacing them breaks XML / changes meaning)
+FORMAT_WORDS = set("""xmlns xml xsd xsi xlink rdf rdfs owl dc dcterms svg inkscape sodipodi schema schemas purl w3 w3c
+http https www ftp utf ascii unicode iso ansi asme astm din jis gost bsi afnor ieee iec nema ul csa sae
+unthreaded threaded metric imperial adobe xmp xmpmeta exif tiff jfif icc srgb""".split())
+
+
 def is_junk(v: str, kind: str, files: int, from_path: bool) -> bool:
+    if v.lower().strip() in FORMAT_WORDS:
+        return True
     if from_path or kind == "part":  # part numbers were filtered by their own rules
         return False
     a = alnum_len(v)
@@ -344,8 +352,11 @@ def build(candidates_path: str, out_path: str) -> dict:
             if len(labels) >= 2:
                 sld = labels[-2] if labels[-2] not in ("ac", "co", "com", "edu", "org", "gov") or len(labels) < 3 else labels[-3]
                 if 4 <= len(sld) <= 8 and sld.isalpha() and sld not in words and sld not in MAIL_PROVIDERS_SLD \
+                        and sld not in FORMAT_WORDS \
                         and not VENDOR.search(sld) and sld not in reg:
                     reg[sld] = {"value": sld.upper(), "kind": "company", "scope": "global", "files": r["files"]}
+    for k in [k for k, r in reg.items() if r["value"].lower().strip() in FORMAT_WORDS]:
+        del reg[k]
     for row in field_rows:
         v = re.sub(r"\s+", " ", clean(row["value"]))
         if v and v.lower() not in reg and alnum_len(v) >= 2 and len(v) <= 80 and not PLACEHOLDER.search(v):
