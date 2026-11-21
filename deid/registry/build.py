@@ -93,7 +93,7 @@ def expand(value: str, kind: str) -> list[tuple[str, str]]:
     m = re.fullmatch(r"([A-Za-z0-9-]{2,15})\\+([A-Za-z0-9._-]{2,30})(?:\s*\((.*)\))?", v)
     if m:
         out += [(m.group(1), "account"), (m.group(2), "account")]
-    if kind == "email" and "@" in v:
+    if kind == "email" and "@" in v and valid_email(v):
         local, dom = v.rsplit("@", 1)
         out.append((local, "account"))
         if dom.lower() not in MAIL_PROVIDERS:
@@ -101,6 +101,38 @@ def expand(value: str, kind: str) -> list[tuple[str, str]]:
     if kind == "domain" and v.lower().startswith("www."):
         out.append((v[4:], "domain"))
     return out
+
+
+def valid_email(v: str) -> bool:
+    loc, dom = v.rsplit("@", 1)
+    return (valid_host(dom) and dom == dom.lower() and len(dom.split(".")[-2]) >= 3
+            and len(loc) >= 2 and re.search(r"[A-Za-z]", loc) is not None)
+
+
+JUNK = re.compile(r"^[A-Za-z]?\d+[A-Za-z]?\d*$|^[a-f0-9]{4,}$|^(?:sketch|plane|boss|cut|extrude|fillet|"
+                  r"part|body|component|assembly|config|default|drawing|sheet|view)\s*-?\d*$", re.I)
+COMPONENT_VENDORS = re.compile(r"alibre|pcbnew|te connectivity|stmicro|mouser|snapeda|digi-?key|molex|"
+                               r"monotype|sdrc|i-deas|würth|wurth|vishay|murata|samtec|harwin|jst|amphenol|"
+                               r"texas instruments|analog devices|microchip|nxp|infineon|bourns|kemet|"
+                               r"panasonic|omron|littelfuse|hirose|traceparts|cadenas|3dcontentcentral|"
+                               r"grabcad|mcmaster|misumi|thingiverse|printables|ultralibrarian|componentsearch", re.I)
+
+
+def is_junk(v: str, kind: str, files: int, from_path: bool) -> bool:
+    if from_path:
+        return False
+    a = alnum_len(v)
+    if JUNK.search(v) or COMPONENT_VENDORS.search(v):
+        return True
+    if a <= 4 and (files <= 1 or re.search(r"\d", v)):
+        return True
+    if kind == "account" and not re.search(r"[aeiouy]", v, re.I):
+        return True
+    # odd internal casing like 'BgfF' or 'aBCd' from binary noise
+    core = re.sub(r"[^A-Za-z]", "", v)
+    if 3 <= len(core) <= 6 and re.search(r"[a-z][A-Z]", core) and files <= 2:
+        return True
+    return False
 
 
 def build(candidates_path: str, out_path: str) -> dict:
@@ -113,13 +145,10 @@ def build(candidates_path: str, out_path: str) -> dict:
             low = v.lower()
             if PLACEHOLDER.search(v) or VENDOR.search(v):
                 continue
-            if kind == "email":
-                if "@" not in v:
-                    continue
-                loc, dom = v.rsplit("@", 1)
-                if (not valid_host(dom) or dom != dom.lower() or len(dom.split(".")[-2]) < 3
-                        or len(loc) < 2 or not re.search(r"[A-Za-z]", loc)):
-                    continue
+            if kind == "email" and ("@" not in v or not valid_email(v)):
+                continue
+            if is_junk(v, kind, row["files"], _from_path(row) and value == row["value"]):
+                continue
             if kind == "domain" and not valid_host(v):
                 continue
             if not v or alnum_len(v) < 2 or len(v) > 120:

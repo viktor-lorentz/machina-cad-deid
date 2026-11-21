@@ -252,7 +252,16 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
         name_map = (lambda n: map_path(n, G["allm"], m, True)) if e in ARCHIVE_EXT else None
         return rw_zip(data, m, name_map, depth)
     if head.startswith(OLE_MAGIC):
-        return rw_ole(data, m)
+        try:
+            return rw_ole(data, m)
+        except NotImplementedError:
+            # olefile cannot rewrite mini-stream entries; same-length patch of
+            # plain-string runs in the container keeps every sector offset valid
+            out = _guarded(data, m)
+            import olefile
+
+            olefile.OleFileIO(io.BytesIO(out)).close()
+            return out
     if e in TEXT_EXT or head.startswith(b"#UGC:") or _looks_text(data):
         return rw_text(data, m)
     return data

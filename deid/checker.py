@@ -93,8 +93,10 @@ def check_one(args):
     except Exception:
         pass
     _, leaks = scan_file((out_root, new_rel))
-    res["deid"] = int(not leaks)
-    res["leaks"] = sum(leaks.values())
+    content = {k: v for k, v in leaks.items() if not k.startswith("PATH:")}
+    res["deid"] = int(not content)
+    res["path_deid"] = int(len(content) == len(leaks))
+    res["leaks"] = sum(content.values())
     return res
 
 
@@ -109,17 +111,17 @@ def run(in_root: str, out_root: str, results_json: str, reg: str, secret: bytes,
     with Pool(workers or os.cpu_count(), initializer=leak_init, initargs=(reg, secret)) as pool:
         for r in pool.imap_unordered(check_one, [(in_root, out_root, f, mapping.get(f, f)) for f in files],
                                      chunksize=16):
-            for k in ("found", "usable", "deid"):
-                tot[k] += r[k]
+            for k in ("found", "usable", "deid", "path_deid"):
+                tot[k] += r.get(k, 0)
             c = by_ext.setdefault(r["ext"], Counter())
             c["n"] += 1
             c["usable"] += r["usable"]
             c["deid"] += r["deid"]
     N = len(files)
-    rates = {k: tot[k] / N for k in ("found", "usable", "deid")}
+    rates = {k: tot[k] / N for k in ("found", "usable", "deid", "path_deid")}
     score = round(1000 * (0.15 * rates["found"] + 0.15 * rates["usable"] + 0.70 * rates["deid"] * rates["usable"]))
     print(f"held-out files: {N}  found={rates['found']:.4f} usable={rates['usable']:.4f} "
-          f"deid={rates['deid']:.4f}  LOCAL SCORE={score}", file=sys.stderr)
+          f"deid(content)={rates['deid']:.4f} deid(path)={rates['path_deid']:.4f}  LOCAL SCORE={score}", file=sys.stderr)
     worst = sorted(by_ext.items(), key=lambda kv: -(kv[1]["n"] - kv[1]["deid"]))[:12]
     for e, c in worst:
         print(f"  {e or '(none)'}: n={c['n']} usable={c['usable']} deid={c['deid']}", file=sys.stderr)
