@@ -222,6 +222,24 @@ mathworks matlab simulink ansys comsol abaqus paraview blender meshlab cura prus
 """.split())
 
 
+_ALLOY = re.compile(r"^(?:(?:Al|Cu|Mg|Zn|Ni|Ti|Fe|Cr|Mo|Si|Pb|Sn|Mn|Co|Ag|Au|Pt|Nb|Zr|W|V|C|N|B)\d*(?:[.,]\d+)?)+$")
+_CAMEL_OK = set("""pcb led usb sd cad cnc pla abs petg tpu io api id ui gui pdf xyz rgb dc ac ip mcu cpu gpu
+dof dofs proj param params config init cfg tmp temp ref refs num img std
+""".split())
+
+
+def _plain_camel(w: str) -> bool:
+    """CamelCase built only from ordinary words / units / element symbols (BasePlate, microSD, AlZnMgCu1)."""
+    if _ALLOY.match(w):
+        return True
+    parts = [p.lower() for p in re.findall(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+", w)]
+    parts = [p for p in parts if not p.isdigit()]
+    if not parts:
+        return True
+    words = _common_words()
+    return all(p in words or p in TECH_STOP or p in _CAMEL_OK or len(p) <= 1 for p in parts)
+
+
 def harvest_text(text: str) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     for m in PROJECT_LABEL_RX.finditer(text):
@@ -232,7 +250,7 @@ def harvest_text(text: str) -> list[tuple[str, str]]:
         w = m.group(1)
         lw = w.lower()
         if 4 <= len(w) <= 24 and len(re.findall(r"[A-Z]", w)) >= 2 and lw not in SOFTWARE_CAMEL \
-                and lw not in _common_words():
+                and lw not in _common_words() and not _plain_camel(w):
             out.append((w, "project_camel"))
     for m in LIGO_RX.finditer(text):
         out.append((m.group(1), "dwgno"))
