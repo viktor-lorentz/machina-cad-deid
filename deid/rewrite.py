@@ -104,7 +104,7 @@ def rw_zip(data: bytes, m: Mapper, name_map=None, depth: int = 0) -> bytes:
     return out
 
 
-def rw_pdf(data: bytes, m: Mapper) -> bytes:
+def rw_pdf(data: bytes, m: Mapper, streams: bool = True) -> bytes:
     import pikepdf
 
     pdf = pikepdf.open(io.BytesIO(data))
@@ -138,7 +138,7 @@ def rw_pdf(data: bytes, m: Mapper) -> bytes:
                         obj[k] = nv
                 else:
                     walk(v, seen)
-            if isinstance(obj, pikepdf.Stream):
+            if streams and isinstance(obj, pikepdf.Stream):
                 filt = obj.get("/Filter")
                 filters = [str(f) for f in (filt if isinstance(filt, pikepdf.Array) else [filt] if filt else [])]
                 if not any(f in ("/DCTDecode", "/JPXDecode", "/CCITTFaxDecode", "/JBIG2Decode") for f in filters):
@@ -164,10 +164,12 @@ def rw_pdf(data: bytes, m: Mapper) -> bytes:
     for obj in pdf.objects:
         walk(obj, seen)
     if not changed:
-        return data
+        return _guarded(data, m)
     out = io.BytesIO()
-    pdf.save(out, static_id=False)
-    res = out.getvalue()
+    pdf.save(out, static_id=False, fix_metadata_version=False,
+             stream_decode_level=pikepdf.StreamDecodeLevel.none, compress_streams=False,
+             object_stream_mode=pikepdf.ObjectStreamMode.preserve)
+    res = _guarded(out.getvalue(), m)
     if len(pikepdf.open(io.BytesIO(res)).pages) != n_pages:
         raise ValueError("page count changed")
     return res
@@ -228,7 +230,10 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
     if e == "stl":
         return rw_stl(data, m)
     if head.startswith(b"%PDF") or e == "pdf":
-        return rw_pdf(data, m)
+        try:
+            return rw_pdf(data, m)
+        except Exception:
+            return rw_pdf(data, m, streams=False)
     if head.startswith(b"PK\x03\x04") and (e in ZIP_EXT) and depth < 4:
         if e in ARCHIVE_EXT and not G.get("archives", False):
             return data
@@ -236,9 +241,17 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
         return rw_zip(data, m, name_map, depth)
     if head.startswith(OLE_MAGIC):
         return rw_ole(data, m)
-    if e in TEXT_EXT or head.startswith(b"#UGC:"):
+    if e in TEXT_EXT or head.startswith(b"#UGC:") or _looks_text(data):
         return rw_text(data, m)
     return data
+
+
+def _looks_text(data: bytes) -> bool:
+    sample = data[:8192]
+    if b"\x00" in sample:
+        return False
+    printable = sum(1 for c in sample if 32 <= c < 127 or c in (9, 10, 13))
+    return printable >= 0.95 * len(sample)
 
 
 # ---------------------------------------------------------------- driver

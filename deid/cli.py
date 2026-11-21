@@ -32,6 +32,14 @@ def main(argv: list[str] | None = None) -> None:
     lk.add_argument("--registry", default="registry/registry.json")
     lk.add_argument("-j", "--workers", type=int, default=None)
 
+    c = sub.add_parser("check", help="local checker on held-out repos")
+    c.add_argument("input")
+    c.add_argument("output")
+    c.add_argument("--results", required=True, help="rewrite-results.json")
+    c.add_argument("--registry", default="registry/registry.json")
+    c.add_argument("-n", type=int, default=3000)
+    c.add_argument("-j", "--workers", type=int, default=None)
+
     a = ap.parse_args(argv)
     secret = os.environ.get("DEID_SECRET", "machina-deid-default-secret").encode()
     if a.cmd == "harvest":
@@ -51,6 +59,10 @@ def main(argv: list[str] | None = None) -> None:
         from deid import leakscan
 
         leakscan.run(a.output, a.registry, secret, a.workers)
+    elif a.cmd == "check":
+        from deid import checker
+
+        checker.run(a.input, a.output, a.results, a.registry, secret, a.n, a.workers)
 
 
 if __name__ == "__main__":

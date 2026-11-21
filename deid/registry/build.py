@@ -37,6 +37,12 @@ MAIL_PROVIDERS = {"gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "
                   "yandex.ru", "users.noreply.github.com", "noreply.github.com"}
 
 
+def _from_path(row: dict) -> bool:
+    """True when the candidate is a structural path segment of its examples."""
+    v = row["value"]
+    return any(f"/{v}__" in "/" + ex or f"__{v}/" in ex or f"/{v}/" in "/" + ex for ex in row.get("examples", []))
+
+
 def load_words() -> set[str]:
     for p in ("/usr/share/dict/words", "/usr/share/dict/american-english"):
         if os.path.exists(p):
@@ -78,7 +84,10 @@ def build(candidates_path: str, out_path: str) -> dict:
         for value, kind in expand(row["value"], row["kind"]):
             v = re.sub(r"\s+", " ", value.strip())
             low = v.lower()
-            if not v or low in STOP or alnum_len(v) < 2 or len(v) > 120:
+            if not v or alnum_len(v) < 2 or len(v) > 120:
+                continue
+            if low in STOP and not (row["kind"] in ("account", "project", "domain") and value == row["value"]
+                                    and _from_path(row)):
                 continue
             if "/" in v or "\\" in v or "://" in v or "=" in v:
                 continue
