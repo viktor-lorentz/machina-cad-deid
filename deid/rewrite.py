@@ -189,29 +189,20 @@ def rw_pdf(data: bytes, m: Mapper, streams: bool = True) -> bytes:
 
 
 def rw_ole(data: bytes, m: Mapper) -> bytes:
-    import olefile
+    """Same-length rewrite of every OLE stream, patched in place (mini-stream safe).
 
-    bio = io.BytesIO(data)
-    ole = olefile.OleFileIO(bio, write_mode=True)
-    changed = False
-    for entry in ole.listdir(streams=True, storages=False):
-        try:
-            if ole.get_size(entry) > 8_000_000:
-                continue
-            body = ole.openstream(entry).read()
-        except Exception:
-            continue
-        is_props = entry[-1].startswith("\x05")
-        new = m.replace_bytes(body, ("ascii", "utf-16-le")) if is_props else _guarded(body, m)
-        if new != body and len(new) == len(body):
-            ole.write_stream(entry, new)
-            changed = True
-    ole.close()
-    if not changed:
-        return data
-    res = bio.getvalue()
-    olefile.OleFileIO(io.BytesIO(res)).close()
-    return res
+    Property-set streams (names starting with \x05) hold author / last-saved-by
+    / company strings: full replacement. Other streams: only matches inside long
+    plain-string runs, so compressed or binary payloads are never touched.
+    """
+    from deid.formats import ole_inplace
+
+    def transform(name: str, body: bytes) -> bytes:
+        if name.startswith("\x05"):
+            return m.replace_bytes(body, ("ascii", "utf-16-le"))
+        return _guarded(body, m)
+
+    return ole_inplace.rewrite(data, transform)
 
 
 def _guarded(body: bytes, m: Mapper) -> bytes:
@@ -261,7 +252,7 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
     if head.startswith(OLE_MAGIC):
         try:
             return rw_ole(data, m)
-        except NotImplementedError:
+        except Exception:
             # olefile cannot rewrite mini-stream entries; same-length patch of
             # plain-string runs in the container keeps every sector offset valid
             out = _guarded(data, m)

@@ -15,7 +15,7 @@ from multiprocessing import Pool
 from pathlib import Path
 
 from deid import textscan
-from deid.formats import meta, pdftext, step
+from deid.formats import meta, oleps, pdftext, step
 
 MAX_READ = 64 * 1024 * 1024
 OLE_MAGIC = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
@@ -88,6 +88,7 @@ def harvest_file(args: tuple[str, str]) -> tuple[str, str, list[tuple[str, str]]
             cands += meta.zipxml(data)
         elif head.startswith(OLE_MAGIC):
             cands += meta.ole(data)
+            cands += oleps.harvest(data)
             cands += textscan.scan(data)
         elif head.startswith(b"#UGC:"):
             cands += meta.creo(data)
