@@ -160,6 +160,11 @@ STANDARD_CODE = re.compile(
     r"|^\d+x\d+|^[mM]\d+x\d+|x\d+mm$|^\d{4}-\d{2}-\d{2}")
 
 
+MAIL_PROVIDERS_SLD = {"gmail", "yahoo", "hotmail", "outlook", "live", "icloud", "proton", "protonmail", "aol",
+                      "github", "gitlab", "google", "amazon", "microsoft", "apple", "wikipedia", "youtube",
+                      "facebook", "twitter", "linkedin", "instagram", "googlemail", "mail", "email", "inbox"}
+
+
 def is_junk(v: str, kind: str, files: int, from_path: bool) -> bool:
     if from_path:
         return False
@@ -188,6 +193,7 @@ def build(candidates_path: str, out_path: str) -> dict:
     words = load_words()
     reg: dict[str, dict] = {}
     field_rows = [r for r in data["candidates"] if r["kind"].endswith("_field")]
+    pdf_codes = {r["value"] for r in data["candidates"] if r["kind"] in ("dwgno", "codechain")}
     for row in data["candidates"]:
         if row["kind"] == "person_near":
             # surname found near a title-block label: keep only project-local words
@@ -199,10 +205,28 @@ def build(candidates_path: str, out_path: str) -> dict:
                     or not near_word_ok(last):
                 continue
             row = dict(row, kind="person")
+        if row["kind"] == "person_init":
+            sur = re.split(r"\.\s?", row["value"])[-1]
+            from deid.formats.pdftext import near_word_ok
+
+            if row.get("repos", 0) > 5 or not near_word_ok(sur):
+                continue
+            row = dict(row, kind="person")
+        if row["kind"] == "codechain":
+            # upper-case code chains printed in PDFs: keep project-local ones that recur
+            if row.get("repos", 0) > 3 or row.get("files", 0) < 2 or STANDARD_CODE.search(row["value"]):
+                continue
+            row = dict(row, kind="partno")
+            mode_ok = os.environ.get("DEID_PARTS", "smart") != "none"
+            if not mode_ok:
+                continue
         if row["kind"] in ("partno", "dwgno"):
-            # DEID_PARTS: none (default) | labels (PDF drawing-number labels only) | all
-            mode = os.environ.get("DEID_PARTS", "none")
-            if mode == "none" or (mode == "labels" and row["kind"] != "dwgno"):
+            # DEID_PARTS: none | smart (default: PDF-printed codes only) | all (also bare file-name codes)
+            mode = os.environ.get("DEID_PARTS", "smart")
+            from_pdf_text = row["kind"] == "dwgno" or "pdf" in row.get("formats", {})
+            if mode == "none" or (mode == "smart" and not from_pdf_text):
+                continue
+            if row["kind"] == "partno" and mode == "smart" and row["value"] not in pdf_codes:
                 continue
             # identifying part / document numbers: project-local codes only
             v0 = row["value"]
@@ -246,6 +270,16 @@ def build(candidates_path: str, out_path: str) -> dict:
             if prev is None or (prev["scope"] == "path" and scope == "global"):
                 reg[low] = {"value": v, "kind": kind, "scope": scope,
                             "files": row["files"] if prev is None else max(prev["files"], row["files"])}
+    # institution acronyms from their domains: ethz.ch -> ETHZ, nait.ca -> NAIT
+    for r in list(reg.values()):
+        if r["kind"] in ("domain", "email") and r["scope"] == "global":
+            host = r["value"].split("@")[-1].lower()
+            labels = host.split(".")
+            if len(labels) >= 2:
+                sld = labels[-2] if labels[-2] not in ("ac", "co", "com", "edu", "org", "gov") or len(labels) < 3 else labels[-3]
+                if 4 <= len(sld) <= 8 and sld.isalpha() and sld not in words and sld not in MAIL_PROVIDERS_SLD \
+                        and not VENDOR.search(sld) and sld not in reg:
+                    reg[sld] = {"value": sld.upper(), "kind": "company", "scope": "global", "files": r["files"]}
     for row in field_rows:
         v = re.sub(r"\s+", " ", clean(row["value"]))
         if v and v.lower() not in reg and alnum_len(v) >= 2 and len(v) <= 80 and not PLACEHOLDER.search(v):

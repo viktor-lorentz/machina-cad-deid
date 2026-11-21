@@ -110,7 +110,8 @@ def harvest_file(args: tuple[str, str]) -> tuple[str, str, list[tuple[str, str]]
             cands += textscan.scan(data[:200000])
         elif e == "pdf" or head.startswith(b"%PDF"):
             cands += meta.pdf(data)
-            cands += pdftext.harvest(data)
+            base = rel.rsplit("/", 1)[-1]
+            cands += pdftext.harvest(data, stem=base.rsplit(".", 1)[0])
             cands += textscan.scan(data[:2_000_000])
         elif e in ("igs", "iges"):
             cands += meta.iges(data)

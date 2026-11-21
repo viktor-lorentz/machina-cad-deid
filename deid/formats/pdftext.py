@@ -188,8 +188,43 @@ DWGNO_RX = re.compile(r"(?i)(?:drawing\s*(?:code|no\.?|number)|dwg\.?\s*no\.?|pa
                       r"\s*[:：.]?\s*([A-Za-z0-9][A-Za-z0-9_.-]{4,40})")
 
 
+LIGO_RX = re.compile(r"(?<![A-Za-z0-9])([A-Z]\d{6,7}(?:-(?:v?\d{1,3}|[A-Z]{1,2})){0,2})(?![A-Za-z0-9])")
+CODECHAIN_RX = re.compile(r"(?<![A-Za-z0-9_.-])([A-Z][A-Z0-9]{1,9}(?:[-_.][A-Z0-9]{1,10}){2,6})(?![A-Za-z0-9_-])")
+INIT_SURNAME_RX = re.compile(r"(?<![\w.])([A-Z]\.\s?(?:[A-Z]\.\s?)?[A-ZÀ-Ý][A-Za-zà-ÿ]{2,20})(?![\w])")
+_INST = (r"(?:INSTITUTE|Institute|UNIVERSITY|University|Institut|Instituto|Istituto|Fundació|Fundación|Fondazione|"
+         r"Stiftung|LABORATORY|Laboratory|Laboratorio|Hochschule|Universität|Université|Universidad|Università|"
+         r"Politecnico|Polytechnic)")
+_CAPW = r"[A-ZÀ-Ý][A-Za-zÀ-ÿ'-]+"
+INSTITUTION_RX = re.compile(
+    rf"((?:{_CAPW}[ \t]+){{0,2}}{_INST}(?:[ \t]+(?:of|OF|für|FÜR|de|DE|for|FOR|di|DI|del|des|du)"
+    rf"(?:[ \t]+(?:und|and|y|et|e|AND|UND)?[ \t]*{_CAPW}){{1,4}}|[ \t]+[A-Z]{{2,6}}\b))")
+DOTTED_PHONE_RX = re.compile(r"(?<![\d.])(\d{2,3}(?:\.\d{2,3}){3,4})(?![\d.])")
+
+
 def harvest_text(text: str) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
+    for m in LIGO_RX.finditer(text):
+        out.append((m.group(1), "dwgno"))
+    for m in CODECHAIN_RX.finditer(text):
+        v = m.group(1)
+        if len(v) >= 7 and re.search(r"[A-Z]{2}", v) and not re.fullmatch(r"[\d.\-_]+", v):
+            out.append((v, "codechain"))
+    for m in INIT_SURNAME_RX.finditer(text):
+        sur = re.split(r"\.\s?", m.group(1))[-1].lower()
+        if len(sur) >= 3 and sur not in TECH_STOP and sur not in STOPWORDS and sur not in _common_words():
+            out.append((m.group(1), "person_init"))
+    for m in INSTITUTION_RX.finditer(text):
+        v = _clean_name(m.group(1))
+        toks = v.split()
+        while toks and (toks[0].lower() in TECH_STOP or toks[0].lower() in _common_words()) and \
+                not re.fullmatch(_INST, toks[0]):
+            toks.pop(0)  # leading drawing words / ordinary words are not part of the name
+        v = " ".join(toks)
+        if len(toks) >= 2:
+            out.append((v, "company"))
+    for m in DOTTED_PHONE_RX.finditer(text):
+        if len(re.sub(r"\D", "", m.group(1))) >= 8:
+            out.append((m.group(1), "phone"))
     for m in DWGNO_RX.finditer(text):
         v = m.group(1).strip("-_.")
         if re.search(r"\d", v) and re.search(r"[A-Za-z]", v) and len(re.findall(r"\d", v)) >= 3:
@@ -228,7 +263,19 @@ def harvest_text(text: str) -> list[tuple[str, str]]:
     return [(v, k) for v, k in out if v]
 
 
-def harvest(data: bytes, max_pages: int = 6) -> list[tuple[str, str]]:
+def stem_codes(stem: str, text: str) -> list[tuple[str, str]]:
+    """The drawing's own file-name stem (or its code core) printed in its title block."""
+    from deid.harvest import part_numbers
+
+    out = []
+    low = text.lower()
+    for v in {stem} | {c for c, _ in part_numbers(stem)}:
+        if len(v) >= 5 and re.search(r"\d", v) and v.lower() in low:
+            out.append((v, "dwgno"))
+    return out
+
+
+def harvest(data: bytes, max_pages: int = 6, stem: str = "") -> list[tuple[str, str]]:
     import fitz
 
     out: list[tuple[str, str]] = []
@@ -240,7 +287,10 @@ def harvest(data: bytes, max_pages: int = 6) -> list[tuple[str, str]]:
         for i, page in enumerate(doc):
             if i >= max_pages:
                 break
-            out += harvest_text(page.get_text())
+            t = page.get_text()
+            out += harvest_text(t)
+            if stem:
+                out += stem_codes(stem, re.sub(r"\s+", " ", t))
     except Exception:
         pass
     return out
