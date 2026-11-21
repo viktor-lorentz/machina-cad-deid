@@ -17,6 +17,7 @@ def test_eval_pdf_categories(tmp_path):
     m.add("Jane Doe", "person")
     m.add("Acme Robotics", "company")
     pdfeval.G["m"] = m
+    pdfeval.G["ptok"] = set()
     pj, pa = m.pseudonym("Jane Doe"), m.pseudonym("Acme Robotics")
     src = tmp_path / "in.pdf"
     _mk(src, ["Drawn by Jane Doe", "Material steel 304", "Acme Robotics bracket"])
@@ -29,5 +30,5 @@ def test_eval_pdf_categories(tmp_path):
     _mk(bad, ["Drawn by Zuzu Kaka", "Material XXXXX 304", "Acme Robotics bracket"])
     r, f, o = pdfeval.eval_pdf(str(src), str(bad), "bad.pdf")
     kinds = sorted(x[0] for x in f)
-    assert kinds == ["inconsistent", "leak", "scope-change"], f
+    assert kinds == ["leak", "no-pseudonym", "scope-change"], f
     assert r["removed"] == 1 and r["consistent"] == 0 and r["leak"] == 1

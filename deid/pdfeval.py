@@ -38,7 +38,8 @@ _TEXTY = {"txt", "md", "csv", "xml", "json", "html", "htm", "stp", "step", "igs"
 def _init(reg, secret):
     from deid.rewrite import load_mappers
 
-    G["m"], _ = load_mappers(reg, secret)
+    _, G["m"] = load_mappers(reg, secret)  # content (global-scope) identities: what content rewriting applies
+    G["ptok"] = {t for p in G["m"].entries.values() for t in re.findall(r"[a-z0-9]+", p.lower())}
 
 
 def _ext(p):
@@ -98,8 +99,10 @@ def eval_pdf(src, dst, rel):
             if tag == "equal":
                 continue
             r["changed_words"] += max(i2 - i1, j2 - j1)
-            if i1 == i2:  # pure insertion: in scope only if next to an identity
-                if (i1 - 1) not in idw and i1 not in idw:
+            ptok = G.get("ptok", set())
+            ins_ok = all(t in ptok for w in wb[j1:j2] for t in re.findall(r"[a-z0-9]+", w))
+            if i1 == i2:  # pure insertion: in scope if it is pseudonym text or next to an identity
+                if not ins_ok and (i1 - 1) not in idw and i1 not in idw:
                     r["scope_viol"] += 1
                     fails.append(("scope-insert", rel, pi + 1, "", " ".join(wb[j1:j2])[:80]))
                 continue
@@ -111,24 +114,25 @@ def eval_pdf(src, dst, rel):
         if not tb.strip():
             r["page_text_lost"] += 1
             fails.append(("page-text-lost", rel, pi + 1, "", ""))
-        for key, w0, w1 in occ:
-            r["occ"] += 1
+        # replacement text may be re-flowed anywhere on the page: compare counts per page, not positions
+        nb = _norm(tb)
+        need = Counter(k for k, _, _ in occ)
+        for key, n_in in need.items():
+            r["occ"] += n_in
+            n_out = len(re.findall(r"(?<![a-z0-9])" + re.escape(key) + r"(?![a-z0-9])", tb))
+            left = min(n_in, n_out)
+            r["leak"] += left
+            r["removed"] += n_in - left
+            if left:
+                fails.append(("leak", rel, pi + 1, key, f"{left}/{n_in} left"))
             pseudo = _norm(m.entries[key])
-            ops = {op_of.get(i) for i in range(w0, w1 + 1)}
-            if any(o and o[0] == "equal" for o in ops):
-                r["leak"] += 1
-                fails.append(("leak", rel, pi + 1, key, ""))
-                continue
-            r["removed"] += 1
-            j1 = min(o[3] for o in ops if o)
-            j2 = max(o[4] for o in ops if o)
-            got = " ".join(wb[j1:j2])
-            if pseudo and pseudo in _norm(got):
-                r["consistent"] += 1
+            n_ps = nb.count(pseudo) if pseudo else 0
+            good = min(n_in - left, n_ps)
+            r["consistent"] += good
+            if good:
                 obs.append((key, pseudo))
-            else:
-                obs.append((key, _norm(got)[:60]))
-                fails.append(("inconsistent", rel, pi + 1, key, got[:80]))
+            if good < n_in - left:
+                fails.append(("no-pseudonym", rel, pi + 1, key, f"removed {n_in - left}, pseudonym found {n_ps}"))
     if len(b) < len(a):
         r["pages_lost"] += len(a) - len(b)
     return r, fails, obs
@@ -145,7 +149,9 @@ def eval_bytes(src, dst, rel):
     except OSError:
         return obs
     for s, e, key in m.find(a):
-        obs.append((key, _norm(b[s:e].decode("latin-1"))))
+        got, want = _norm(b[s:e].decode("latin-1")), _norm(m.entries[key])
+        if len(got) == len(want) and got != _norm(key):  # a same-layout replacement was written here
+            obs.append((key, got))
     return obs
 
 
