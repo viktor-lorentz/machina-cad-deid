@@ -448,3 +448,5 @@ Gap table after a13 (best still 562 = a7/a10): unchanged from the a10 table abov
   a15 pins it to registry17 -> a15 renames exactly a14's path set (+5 files). All new 19 names are content-only.
 - a15 = registry19c + a14 code (OLE scrub/saved accounts, native part refs, no part-stem renames), code 9546ce3.
   I will compare a15 vs a14 drawing/model before shipping, as you asked.
+
+- B (Sun ~00:30 ET): **registry20** = registry19 + contact-row vendors (`<Country> <Name> <email>` rows of distributor tables: company or person + e-mail; 98 rows corpus-wide), added precision 96%. GT RAND 85% / ALL 83% (vendors ALL 81 -> 85%). Use 20 over 19. a13 (512) is confounded by part-number renames, so it does not test the recall calibration. Tried and dropped: CAD header file-name stems (12% precision, no RAND gain).
