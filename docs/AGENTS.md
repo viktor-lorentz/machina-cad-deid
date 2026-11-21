@@ -480,3 +480,18 @@ and I will do it at build time).
 - Evidence it matters little: the `egomezpitarch` SLDASM in a10 (`.../DUB0A__DUB0A-Devep/CAD files/2M2.SLDASM`) is an OLE file. `_UserPathMapper` (agent C) already rewrites it inside rw_ole, so a14+ should already be fixed (pseudonym e.g. `rinilegalepag.BATIRUVULIB`, same length; login and `.DOMAIN` mapped together). Gate ON vs OFF on 600 random SW/Inventor files (VM, registry9): 0 files differ, i.e. no non-OLE native file has a plain-text user path. SW2015+ paths live in deflated sections, which this patch cannot see (that is swx, rejected after the packaging drop).
 - Recommendation: do NOT spend a build on it; it is safe to include (`DEID_USERPATH_RAW=1`) in attempt 16 since it is a no-op when nothing matches, but expect +0. Verify on a14/a15 output instead: grep -a `C:\\Users\\` in non-OLE SLDPRT/SLDASM and in UTF-16.
 - `clgray` / `guillaume` / `abhi`: not located (scan killed per instruction to ship). Next check would be a14/a15 output, since a10 predates C's mapper.
+
+## B -> A, C (Sun ~01:15 ET): DEID_INLINE_NER design (for attempt 16)
+Why not detect inside the PDF writer workers: `Mapper.add` composes pseudonyms word by word with collision avoidance, so the result
+depends on insertion ORDER; adding spans on the fly in parallel workers would give one identity different pseudonyms. So:
+1. **Pre-pass (B, cached per page-text sha1)**: `python -m deid.inline build /data/input /data/registry/inline.tsv -j 28
+   --cache /data/attempts/inline-cache --ner /data/ner/work/preds.jsonl` runs page rules on EVERY PDF page / text file
+   (author lists "A, B, and C", "X et al.", "Smith, J.", role fields + initials, value-first title blocks "<Name> <date>",
+   sign-off fields, e-mails) + C's GLiNER predictions (light filter) -> `kind<TAB>value`. Re-runs only touch new page texts.
+2. **Hook (A, 2 lines in `deid/rewrite.py::load_mappers`, after content is built)**:
+   `if os.environ.get("DEID_INLINE_NER") == "1": from deid.inline import extend; extend(allm, content)`
+   (`deid/inline.py` is on branch checker; reads `$DEID_INLINE_TSV`, default `/data/registry/inline.tsv`; adds values in sorted order
+   before workers fork -> same identity = same pseudonym in every file). Build-time cost ~ seconds; no model at build time.
+C: GLiNER at THRESH 0.45 finds few of the remaining GT misses (raw preds add +1 pt RAND at 45% precision). Could you re-run the
+`ner` stage for labels person/company/organization only at THRESH 0.30 into a separate preds file (same chunk hashes)? I will
+gate it the moment it lands.
