@@ -206,14 +206,6 @@ def select(stats, out, max_repos=3):
     return n
 
 
-if __name__ == "__main__":
-    if sys.argv[1:2] == ["stems"]:
-        stems_main(sys.argv[2], sys.argv[3])
-    elif sys.argv[1:2] == ["select"]:
-        print("selected", select(sys.argv[2], sys.argv[3], int(sys.argv[4]) if len(sys.argv) > 4 else 3))
-    else:
-        main(sys.argv[1:])
-
 
 # ---- CAD header file-name stems (content identities only; never used for renames) --------------------------------
 STEPNAME = re.compile(r"FILE_NAME\s*\(\s*(?:/\*[^*]*\*/\s*)?'([^']{3,260})'", re.S)
@@ -263,3 +255,12 @@ def stems_main(root, out, j=28):
             if len(reps[v]) <= 2 and v.isascii():
                 fh.write(f"part\t{v}\n"); n += 1
     print(f"header files {len(paths)} stems {len(cnt)} kept {n}")
+
+
+if __name__ == "__main__":
+    if sys.argv[1:2] == ["stems"]:
+        stems_main(sys.argv[2], sys.argv[3])
+    elif sys.argv[1:2] == ["select"]:
+        print("selected", select(sys.argv[2], sys.argv[3], int(sys.argv[4]) if len(sys.argv) > 4 else 3))
+    else:
+        main(sys.argv[1:])
