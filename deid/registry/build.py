@@ -327,7 +327,7 @@ def build(candidates_path: str, out_path: str) -> dict:
             v0 = FILE_EXT_RX.sub("", row["value"])
             from deid.formats.pdftext import _common_words
 
-            if "_" in v0 or v0.lower() in _common_words() or re.search(r"(?i)\bohl\b|licen|^gpl|^cc-by", v0):
+            if "_" in v0 or v0.lower() in _common_words() or re.search(r"(?i)\bohl\b|licen|^gpl|^cc-by|^(vdd|vcc|vss|gnd)", v0):
                 continue
             row = dict(row, value=v0)
             if row.get("repos", 0) > 2 or STANDARD_CODE.search(v0) or _is_signal_name(v0) or len(v0) < 5 \
