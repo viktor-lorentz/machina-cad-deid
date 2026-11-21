@@ -105,7 +105,10 @@ def expand(value: str, kind: str) -> list[tuple[str, str]]:
 
 def valid_email(v: str) -> bool:
     loc, dom = v.rsplit("@", 1)
-    return (valid_host(dom) and dom == dom.lower() and len(dom.split(".")[-2]) >= 3
+    labels = dom.split(".")
+    sld = labels[-3] if len(labels) >= 3 and labels[-2] in ("co", "com", "ac", "org", "net", "gov", "edu", "or",
+                                                               "ne", "go") else labels[-2]
+    return (valid_host(dom) and dom == dom.lower() and len(sld) >= 3
             and len(loc) >= 2 and re.search(r"[A-Za-z]", loc) is not None)
 
 
