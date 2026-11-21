@@ -5,7 +5,7 @@ Two Claude agents work on this repo. To avoid collisions each owns files; touch 
 | Agent | Branch / worktree | Owns | Status |
 |-------|-------------------|------|--------|
 | CAD agent A (pipeline) | `main` in ~/machina-cad-deid | harvest, registry/, rewrite.py, formats/, readme.py, infra/, attempts | active |
-| CAD agent C (type harvester) | `main`, new files only | tools/typeharvest.py (read-only research; outputs on VM /data/attempts/typeharvest/) | started Sat 09:55 ET |
+| CAD agent C (type harvester) | `main`, new files only | tools/typeharvest.py (read-only research; outputs on VM /data/attempts/typeharvest/) | done Sat 10:35 ET (handoff below) |
 | CAD agent B (checker) | `checker` in ~/machina-cad-deid-checker | deid/checker.py, deid/leakscan.py, deid/detect.py, deid/fingerprint.py, deid/consistency.py, deid/pdfcheck.py, deid/pdfeval.py (independent detectors), tests/test_checker*.py, tests/test_leak*.py | started 2026-11-20 21:10 ET |
 
 ## Agent B plan (local scorer + leak scanner, modelled on challenge.pdf)
@@ -107,3 +107,31 @@ Top 20 misses, described by shape (values in gt-missed.tsv), in the order I woul
 20. SolidWorks custom-property project names (e.g. `<year> Robot`).
 Priority by points: part/doc numbers (31% of all identities, 0% recall) >> persons (initial+surname) > institutions (full + acronyms + diacritics) > projects (repo-name variants) > phones/addresses.
 Scope warning: harvest numbers by context (title-block DWG NO / PART NUMBER / ITEM rows / file-name stems), not by bare regex, or standard numbers (DIN/ISO, screw sizes like 8-32 UNC) will be over-redacted.
+
+## C -> A: identity-TYPE harvest over the full input (Sat 10:30 ET; read-only, all 188,727 files, 3.5 min on 12 procs)
+Tool: `tools/typeharvest.py` (paths, PDF Info/XMP + page text up to 80 pages, STEP/IGES headers, OLE SummaryInformation,
+FCStd/3MF XML, SVG metadata/text, OBJ/WRL comments, DXF text, raw head/tail strings of binaries for usernames/emails/URLs).
+Engineering filter: units, standards (ISO/ASTM/DIN/...), materials, dimensions, screw sizes, dates, hashes/GUIDs, FreeCAD
+default labels (Sketch001, XY_Plane001...), software/public hosts. Registry cross-check: registry5 (full/part/none).
+Private outputs on VM (originals inside, never commit):
+- `/data/attempts/typeharvest/candidates.tsv`: everything (type, value, occ, files, sources, in_registry, also_filename, 3 contexts)
+- `/data/attempts/typeharvest/priority.tsv`: filtered + ranked, not fully in registry (re-run: `python tools/typeharvest_prio.py` on VM)
+  score = files x2 if also a file-name stem x1.5 if seen in PDF text.
+
+priority.tsv rows by type (all NOT fully in registry5):
+| type | rows | what the top rows look like (shapes only) | suggested use |
+|------|------|-------------------------------------------|---------------|
+| username | 268 | logins in `C:\Users\<x>` inside binaries (top one in 522 files, others 100-170 files); `HOST\user` in PDF Author (4 users x 150-200 files each) | add as account; also the bare user part of `HOST\user` |
+| email | 34 | personal e-mails in STEP headers (185 files), PDF page text (216 occ/56 files), FCStd CreatedBy (62 occ) | add email + local part + domain |
+| phone | 52 | US `(ddd) ddd-dddd` in PDF title/contact blocks (7-10 occ each), one in OLE comments (31 files), one in STEP header (25 files) | add as contact identities |
+| address | 76 | `City, ST ddddd` and `<n> <Name> Street` in STEP headers (92 occ/49 files), OLE comments (16 files, an old GPL notice address: probably leave), PDF contact blocks | add street + city/zip lines |
+| host / url | 197 / 529 | lab/robot project sites in PDF text (133 files), a personal mail domain in STEP headers (192 files), vendor sites; tool/schema/font hosts already dropped | add hosts; URL paths contain account/repo names |
+| projcode | 1109 | caps dash codes `AAA-AAAA-NNN-NNN-NNN` (130 files, path + PDF + STEP), `AAA-NNN-NNN-NNx` in PDF Title (98 files), `AA-NN-NN` also a filename stem | document/part numbers -> registry (path + content together) |
+| partno:label | 62 | values after DWG NO / PART NO / ITEM labels in PDF title blocks, `NNx-NN-NN` codes, `<vendor-part>_MOUNT_*` | part numbers |
+| partno:filename / code | 2836 / 16878 | alnum stems repeated across files (`<proj>NN_<proj>NN` in 6998 files, `<word>-NNNN` in 1322, robot model codes); many are project names | review top ~200 by score; project names are the high-value part |
+| invented.segment | 134 | repo-style path segments `<owner>__<repo>` and `<a>-<b>-<c>` built from non-dictionary words (top: 6005, 1932, ~270 files each) | owner + repo + each word as identities |
+| invented / invented.dotted | 1701 / 21 | non-dictionary capitalized words: surnames in PDF text (Spanish/Catalan/German), institute words, project words; dotted lab-host fragments in paths | needs a quick human/LLM pass; 2835 have files>=2 |
+Notes: the target style (Zotakul / Uliredok / ote.ipob.eka) is mostly ALREADY in registry5 (filtered out as `full`), so the
+remaining gaps are people/contact/number types, not invented words. Top-value adds by spread: usernames (rawstr + PDF Author),
+projcodes and filename-stem codes (they link paths <-> content, so add them globally and rewrite both together), PDF contact
+blocks (phone + address + email + host on the same pages).
