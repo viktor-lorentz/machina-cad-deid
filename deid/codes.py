@@ -161,7 +161,8 @@ EXCL2 = [re.compile(x, re.I) for x in (
     r"^(?:VDD|VCC|VSS|GND|VIN|VOUT|VBUS|VBAT|AVDD|DVDD|VREF|VIO|VDDIO|\+?\d+V\d*)(?:_|$)", r"^OHL", r"^CERN-OHL", r"-position$", r"^\d+X\.",
     r"^L\d+(?:[.,]\d+)?(?:mm)?$", r"^L\d+-\d+$", r"^[A-Z]\d{2}-[A-Z]\d{2}$", r"\dV-\d", r"-T\d+-", r"^D\d{2,3}$", r"-Druck$",
     r"^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\d", r"^\d+-\d+[a-z]$", r"^RAL\d", r"^AW-\d",
-    r"^(?:ANT|AIN|DEC|INT|SW|TP|LED|BTN|CN|JP|SJ|FB|XTAL|Y)\d{1,2}$", r"^ASME", r"^ANSI", r"^CC-?BY", r"^GPL", r"^LGPL", r"^MIT-", r"^(?:P|PA|PB|PC|PD|PE|PF|GPIO|ADC|DAC|TIM|USART|UART|SPI|I2C)\d+(?:_|$)",
+    r"^(?:ANT|AIN|DEC|INT|SW|TP|LED|BTN|CN|JP|SJ|FB|XTAL|Y)\d{1,2}$", r"\s", r"^[A-Za-z]{2,4}\d$", r"^\d+[kmg]i?b(?:it|yte)?s?$", r"^\d+h\d+m$", r"^\d+m\d+s$",
+    r"^(?:POINT|VERTEX|EDGE|POS|DIR|AXIS|PLANE|FACE|LINE|CURVE)\d+$", r"^Vv?\d", r"^ASME", r"^ANSI", r"^CC-?BY", r"^GPL", r"^LGPL", r"^MIT-", r"^(?:P|PA|PB|PC|PD|PE|PF|GPIO|ADC|DAC|TIM|USART|UART|SPI|I2C)\d+(?:_|$)",
 )]
 
 
