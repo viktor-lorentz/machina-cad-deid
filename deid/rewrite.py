@@ -399,6 +399,11 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
     head = data[:8]
     if not data:
         return data
+    if (e in NATIVE_EXT or ext_of(re.sub(r"\.\d+$", "", name)) in NATIVE_EXT) and G.get("pathm") is not None and m is G.get("content") and G.get("native_noparts", True):
+        # native CAD drawings/assemblies reference parts by file name inside their streams; native file
+        # stems keep their part numbers, so part numbers inside native files stay too (people, accounts,
+        # companies are still replaced)
+        m = G["pathm"]
     if e in ("step", "stp", "p21") or head.startswith(b"ISO-1030"):
         return rw_step(data, m)
     if e == "stl":

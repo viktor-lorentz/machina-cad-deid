@@ -60,11 +60,7 @@ def fields(data: bytes):
             for fmtid, pid, v in oleps.parse(body):
                 kind = oleps._kind(fmtid, pid)
                 if kind is None:
-                    # custom / user-defined property sets: keep name-like values (DrawnBy, CheckedBy, ...)
-                    std = fmtid in (oleps.SUMMARY,) or (fmtid == oleps.DOCSUMMARY and pid < 0x100)
-                    if std or not NAMEISH.match(v) or pid in (1,):
-                        continue
-                    kind = "custom"
+                    continue
                 if v.strip().lower() in SKIP_VALUES or len(v.strip()) < 3:
                     continue
                 out.append(("/".join(e), fmtid, pid, kind, v.strip()))
@@ -194,11 +190,24 @@ def main():
         for where, text in views(dout):
             for v in vs:
                 for fv in enc_forms(v):
-                    if fv in text:
-                        resid.append((where, v))
-                        break
+                    i = text.find(fv)
+                    while i >= 0:   # word-bounded: "map" inside "bitmap" is not residue
+                        a0 = text[i - 1] if i else " "
+                        b0 = text[i + len(fv)] if i + len(fv) < len(text) else " "
+                        if not (a0.isalnum() and fv[0].isalnum()) and not (b0.isalnum() and fv[-1].isalnum()):
+                            resid.append((where, v))
+                            break
+                        i = text.find(fv, i + 1)
+                    else:
+                        continue
+                    break
             if reg is not None:
-                for _, w in reg.iter(text):
+                for end, w in reg.iter(text):
+                    st = end - len(w) + 1
+                    a0 = text[st - 1] if st else " "
+                    b0 = text[end + 1] if end + 1 < len(text) else " "
+                    if (a0.isalnum() and w[0].isalnum()) or (b0.isalnum() and w[-1].isalnum()):
+                        continue
                     reg_resid.append((where, w))
         resid = sorted(set(resid))
         if resid:
