@@ -36,7 +36,7 @@ HOST = re.compile(r"(?<![A-Za-z0-9\-\.@])((?:[a-z0-9](?:[a-z0-9\-]{0,40}[a-z0-9]
 PUBLIC = re.compile(r"(?i)(?:^|\.)(?:w3\.org|openxmlformats\.org|purl\.org|adobe\.com|microsoft\.com|xml\.org|iana\.org|schema\.org|xmlsoap\.org|"
                     r"github\.com|githubusercontent\.com|gitlab\.com|google\.com|googleapis\.com|youtube\.com|youtu\.be|wikipedia\.org|"
                     r"creativecommons\.org|gnu\.org|opensource\.org|apache\.org|mozilla\.org|python\.org|example\.com|example\.org|"
-                    r"localhost|doi\.org|archive\.org|w3schools\.com|stackoverflow\.com|apple\.com|ietf\.org|unicode\.org|oasis-open\.org)$")
+                    r"localhost|doi\.org|sourceforge\.net|archive\.org|w3schools\.com|stackoverflow\.com|apple\.com|ietf\.org|unicode\.org|oasis-open\.org)$")
 FILEEXT = re.compile(r"(?i)\.(?:prt|asm|drw|par|psm|catpart|catproduct|pdf|step|stp|stl|iges|igs|dxf|dwg|sldprt|sldasm|slddrw|ipt|iam|idw|f3d|fcstd|obj|3mf|png|jpg|jpeg|gif|svg|"
                      r"txt|md|csv|xlsx|xls|docx|doc|zip|gz|html|htm|xml|json|py|c|h|cpp|js|ini|cfg|exe|dll|so|log|bin|hex|ino|scad|gcode|nc)$")
 ADDR1 = re.compile(r"(?:GmbH|AG|KG|Ltd\.?|Inc\.?|S\.L\.|B\.V\.|Oy|A/S|s\.r\.o\.|e\.V\.|SE)\s*[,;]\s*((?:D-|DE-|A-|CH-)?\d{4,5}\s[A-ZÄÖÜ][a-zäöüß]+(?:-[A-ZÄÖÜ][a-zäöüß]+)?)")
@@ -156,15 +156,32 @@ EXCL2 = [re.compile(x, re.I) for x in (
     r"^(?:sheet|page|fig|detail|section|view|item|step|part|no|nr)[\-_.]?\d", r"^\d+(?:st|nd|rd|th)$", r"^[a-z]{1,2}\d{1,2}$",
     r"^(?:m|g|r|w|t|h|n|c|p)\d+(?:[.,]\d+)?$", r"^\d+[a-z]$", r"^iso", r"^din", r"^gb\d", r"^jis",
     r"^(?:VDD|VCC|VSS|GND|VIN|VOUT|VBUS|VBAT|AVDD|DVDD|VREF|VIO|VDDIO|\+?\d+V\d*)(?:_|$)", r"^OHL", r"^CERN-OHL", r"-position$", r"^\d+X\.",
-    r"^ASME", r"^ANSI", r"^CC-?BY", r"^GPL", r"^LGPL", r"^MIT-", r"^(?:P|PA|PB|PC|PD|PE|PF|GPIO|ADC|DAC|TIM|USART|UART|SPI|I2C)\d+(?:_|$)",
+    r"^L\d+(?:[.,]\d+)?(?:mm)?$", r"^L\d+-\d+$", r"^[A-Z]\d{2}-[A-Z]\d{2}$", r"\dV-\d", r"-T\d+-", r"^D\d{2,3}$", r"-Druck$",
+    r"^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\d", r"^\d+-\d+[a-z]$", r"^RAL\d", r"^AW-\d",
+    r"^(?:ANT|AIN|DEC|INT|SW|TP|LED|BTN|CN|JP|SJ|FB|XTAL|Y)\d{1,2}$", r"^ASME", r"^ANSI", r"^CC-?BY", r"^GPL", r"^LGPL", r"^MIT-", r"^(?:P|PA|PB|PC|PD|PE|PF|GPIO|ADC|DAC|TIM|USART|UART|SPI|I2C)\d+(?:_|$)",
 )]
 
 
+_WORDS = None
+
+
+def _dictword(w):
+    global _WORDS
+    if _WORDS is None:
+        try:
+            _WORDS = {x.strip().lower() for x in open("/usr/share/dict/words", encoding="utf-8", errors="ignore")}
+        except OSError:
+            _WORDS = set()
+    return w.lower() in _WORDS
+
+
 def keep_value(kind, v, repos, max_repos):
+    if kind == "code" and re.fullmatch(r"[A-Za-z]+(?:-[A-Za-z]+)+", v) and all(_dictword(x) for x in v.split("-")):
+        return False
     if kind == "address":
         return len(v) >= 6 and re.search(r"[A-Za-zÄÖÜäöüß]{3}", v) is not None and re.search(r"\d", v) is not None
     if kind == "host":
-        return True
+        return not PUBLIC.search(v.lower())
     if not v.isascii() or repos > max_repos or any(x.search(v) for x in EXCL2):
         return False
     return True
