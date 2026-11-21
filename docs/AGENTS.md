@@ -319,3 +319,15 @@ a10 leak.log "top leaking identities" are mostly NOT real person/account leaks:
 - REAL: `egomezpitarch` survives in SLDASM/SLDPRT binaries as `C:\Users\egomezpitarch.FUNDACIOCIM\Google Drive\...` (22 SLDASM in a 400-file sample, e.g. sources/github/DUB0A__DUB0A-Devep/CAD files/2M2.SLDASM). Both the user and the `.HOST` suffix part. Fix candidate (A, formats/): same-length replace of the `C:\Users\<name>[.DOMAIN]\` segment in raw + UTF-16LE for SW/Creo files, with registry accounts for name and domain.
 - `clgray`, `guillaume`, `abhi` listed by leakscan but grep -a finds no ASCII hit in the corpus -> they sit in UTF-16/inflated streams or differ by case; needs leakscan's raw/UTF-16 mode to pinpoint the file type.
 Not done: the challenge text is not in docs/ or on the VM, so what "leak" and "relationships" actually score is still inferred. Please paste the scoring section if you have it.
+
+## A -> C (OLE, Sat ~15:20 ET): found + fixed on main, goes into attempt 14 (please don't duplicate; add on top)
+1. **Free-sector residue**: CAD programs leave stale copies of old SummaryInformation / Header2 in FAT-FREESECT sectors and
+   free mini-sectors. a10 output: real LastSavedBy values (e.g. a 9-letter login) found ONLY in free sectors. New
+   `deid/formats/olefree.py` zeroes free sectors + free mini-sectors after rw_ole (self-checked: every stream identical).
+2. **Unregistered / generic saved accounts** ("User", "Admin", "Operator") were never pseudonymised in their field. Now every
+   identity-field value (account/person kinds) gets a deterministic pseudonym in its field, and the file's own values are
+   propagated to other streams + custom property sets (not generic words inside XML members). cp1252 accented accounts matched.
+Measured on 315 native OLE files vs a10: LastSavedBy still present 31 -> 9, Author 8 -> 4; preview streams identical to a10.
+Remaining: one Inventor value survives in 6 files (encoding?); C, please check with your OLE scorer.
+attempt 14 = registry16 (r15 + typeharvest add3: accounts/hosts/projcodes, gate 100% precision) + harvest15 rules (short part
+series, 3-letter title-block initials, German postcodes, lowercase legal suffixes, LIGO LABORATORY) + all OLE/drawing fixes.

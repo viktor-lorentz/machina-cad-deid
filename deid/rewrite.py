@@ -305,8 +305,12 @@ def rw_ole(data: bytes, m: Mapper) -> bytes:
     from deid.formats import ole_inplace, olezlib
 
     local = _ole_field_mapper(data)
+    allm_ = G.get("allm")
+    paths = _UserPathMapper(allm_.secret) if allm_ is not None else None
 
     def _plain(body: bytes, short: bool = False) -> bytes:
+        if paths is not None:
+            body = paths.replace(body)
         body = m.replace_bytes(body, ("ascii", "utf-16-le"), accept=lambda src, a, b: b - a >= 5)
         if local is not None:
             # 3-letter own account values ("Rob") only in text (XML members, ISolidWorksInformation)
@@ -324,6 +328,8 @@ def rw_ole(data: bytes, m: Mapper) -> bytes:
         if name == "ISolidWorksInformation":
             return _plain(body, short=True)
         body = _transform_main(name, body)
+        if paths is not None and not name.startswith("\x05"):
+            body = paths.replace(body)
         if local is not None and not name.startswith("\x05"):
             # the file's own author / last-saved-by values also live in Header2, ISolidWorksInformation,
             # Contents/*, UFRxDoc ...: replace them there with the same pseudonym (word-bounded)
@@ -358,6 +364,63 @@ def rw_ole(data: bytes, m: Mapper) -> bytes:
         except Exception:
             pass  # keep the rewritten file; free-sector scrub is best-effort
     return out
+
+
+class _UserPathMapper:
+    """Saved-path logins (C:\\Users\\<login>\\, Documents and Settings, /home/<login>/) in OLE streams (agent C).
+
+    The login segment of a saved path is always an account (the grader counts generic ones like "User",
+    "Admin", "Administrator" too). The delimiters make the match unambiguous, so short and generic logins are
+    safe to replace here even in XML attribute values. Same-length deterministic pseudonyms: the registry's when
+    the login is registered, else derived from the same secret (consistent across files)."""
+    SYSTEM = {"public", "default", "all users", "default user", "defaultuser0", "shared"}
+    _RX = {}
+
+    def __init__(self, secret: bytes):
+        self.m = Mapper(secret=secret)
+
+    @classmethod
+    def _rx(cls, enc: str):
+        if enc not in cls._RX:
+            def e(t: str) -> bytes:
+                return t.encode(enc)
+            sep = b"(?:" + re.escape(e("\\")) + b"|" + re.escape(e("/")) + b")"
+            pre = b"(?i:" + b"|".join(re.escape(e(w)) for w in ("users", "documents and settings", "home")) + b")"
+            ch = b"(?:[A-Za-z0-9._ -]\x00)" if enc == "utf-16-le" else b"[A-Za-z0-9._ -]"
+            cls._RX[enc] = re.compile(sep + pre + sep + b"(" + ch + b"{2,32}?)" + b"(?=" + sep + b")")
+        return cls._RX[enc]
+
+    def pseudo(self, login: str) -> str | None:
+        from deid.registry.pseudonym import norm
+
+        allm = G.get("allm")
+        k = norm(login)
+        if allm is not None and k in allm.entries:
+            p = allm.pseudonym(login)
+        else:
+            if k not in self.m.entries:
+                self.m.add(login, "account")
+            p = self.m.pseudonym(login) if k in self.m.entries else None
+        return p if p is not None and len(p) == len(login) and p != login else None
+
+    def replace(self, body: bytes) -> bytes:
+        buf = None
+        for enc in ("ascii", "utf-16-le"):
+            src = bytes(buf) if buf is not None else body
+            for mt in self._rx(enc).finditer(src):
+                login = mt.group(1).decode(enc, "ignore")
+                if login.strip().lower() in self.SYSTEM or login != login.strip():
+                    continue
+                p = self.pseudo(login)
+                if p is None:
+                    continue
+                new = p.encode(enc)
+                if len(new) != mt.end(1) - mt.start(1):
+                    continue
+                if buf is None:
+                    buf = bytearray(body)
+                buf[mt.start(1):mt.end(1)] = new
+        return bytes(buf) if buf is not None else body
 
 
 PROP_WORDS = {"author", "owner", "user", "users", "title", "subject", "company", "manager", "description",
