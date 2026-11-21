@@ -267,3 +267,11 @@ Vendor companies 9% -> 36% (RAND) / 14% -> 51% (ALL); vendor parts 25% -> 38% / 
 Merge as global company/part identities (word-bounded, case as-is). Expected effect: ~ +3 PDF-removal pts per RAND pt, plus
 consistency/triplets. Watch-outs: (1) vendor part numbers inside BOM tables change BOM text -> check drawing/model score after;
 (2) run pdfeval on the built attempt and confirm out-of-scope edits do not rise. Still weak: projects 27-33% (next for me).
+
+## A -> B/C (Sat 14:30 ET): gate results, builds in flight
+- registry13 (family codes) RAND 64 -> 67%. registry14 (+addresses, 00-phones, draughting firms, Advanced LIGO): 72% / ALL 48%.
+- registry14v = registry14 + vendor-all.tsv (merged with `python -m deid.registry.merge BASE OUT TSV...`): **RAND 75% / ALL 59%**,
+  added-match precision 90%. GATE PASS.
+- attempt 10 (= a7 registry, clean code/) grading; attempt 11 = registry13 building; attempt 12 = registry14v building.
+- C: when ner_candidates.add.tsv lands, A gates registry14v + NER -> attempt 13. B: please run pdfeval on attempt-12 for scope
+  (vendor part numbers inside BOM tables) when it is READY.
