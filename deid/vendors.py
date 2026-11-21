@@ -159,7 +159,8 @@ LEAD = re.compile(r"^(?:(?i:sole|written|permission|case|will|de|the|property|of
 TAIL = re.compile(r"(?:[ ,.]+(?:All|All rights.*|Page|page|CC BY-SA|CC-BY.*|Rev.*|Ltd\. All))+$")
 GENERIC = {"author", "open cascade", "user", "users", "administrator", "admin", "sysadmin", "konstrukteur", "china", "unknown", "none",
            "managed by terraform", "pcbnew", "nist", "sdrc", "university", "seller", "buyer", "company", "national institute", "owner",
-           "designer", "engineer", "student", "organization", "organisation", "default", "windows", "titans"}
+           "designer", "engineer", "student", "organization", "organisation", "default", "windows", "titans", "system", "plc", "asme", "astm",
+           "ansi", "iso", "din", "iec", "ieee", "sae", "jis", "bsi", "nema", "csa", "ul", "group", "inc", "corp", "ltd", "llc", "gmbh", "ag"}
 
 
 def select(harvest_tsv, out_tsv, min_count=1):
@@ -181,6 +182,8 @@ def select(harvest_tsv, out_tsv, min_count=1):
         if (len(v) < 3 or low in GENERIC or "�" in v or "http" in low or "/" in v and src != "legal"
                 or not re.search(r"[A-Za-z]{2}", v) or re.fullmatch(r"[A-Z][a-z]+", v) and src in ("copy", "steporg", "tm")):
             continue  # single first names / generic words are too risky for global replacement
+        if re.fullmatch(r"[A-Z]{2,4}", v) and v not in KNOWN:
+            continue  # bare short acronyms (PLC, SYSTEM-like) are too ambiguous
         kind = "company"
         if src in ("copy", "steporg") and re.fullmatch(r"(?:[A-Z][a-z]+\.? ){1,2}[A-Z][a-z]+", v) and not re.search(SUFFIX, v):
             kind = "person"
