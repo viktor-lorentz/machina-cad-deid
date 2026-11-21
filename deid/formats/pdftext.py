@@ -47,8 +47,8 @@ wei werner william wolfgang xavier yann yuki yuri yves zhang
 """.split())
 
 LABELS = (r"drawn(?:\s+by)?|dwn|drn|checked(?:\s+by)?|chk|chkd|approved(?:\s+by)?|appr?|designed(?:\s+by)?|"
-          r"designer|design|engineer|eng|author|created\s+by|creator|made\s+by|prepared\s+by|reviewed\s+by|"
-          r"name|gezeichnet|gezeich\.|gepr(?:ü|ue)ft|bearbeitet|bearb\.|konstrukteur|ersteller|norm|"
+          r"designer|engineer|author|created\s+by|creator|made\s+by|prepared\s+by|reviewed\s+by|"
+          r"gezeichnet|gezeich\.|gepr(?:ü|ue)ft|bearbeitet|bearb\.|konstrukteur|ersteller|"
           r"dessin(?:é|e)|v(?:é|e)rifi(?:é|e)|auteur|approuv(?:é|e)|dibujado|revisado|disegnato|controllato|"
           r"设计|審核|审核|校核|校对|批准|制图|绘图|作成者|設計|担当")
 LABEL_RX = re.compile(rf"(?:^|\s)(?i:{LABELS})\s*[:：.]?[ \t]+([A-Z][A-Za-z.'-]{{1,20}}(?:[ \t]+[A-Z][A-Za-z.'-]{{1,20}}){{0,2}})")
