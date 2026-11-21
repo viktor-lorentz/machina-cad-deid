@@ -34,3 +34,11 @@ a7 + SolidWorks 2015+ section rewrite + SW docProps harvest (registry11).
 leak 9 · consistency 5 · distinct 2 (-1) · relationships 10 (-1) · engineering 10 · OLE hidden 4 · packaging 2 (-3) ·
 PDF removal 175 · PDF consistency 89 · triplets 29 · drawing/model 160 (-4) · OLE acct 4 · residue 4 · preview 25 · integrity 25
 Verdict: SW2015 rewrite is net negative (-9), no category gained. Disabled (G["swx"]=False) from attempt 10 on.
+
+## Attempt 9 — 519 (BB-0501A3F6, Sat 11:57 AM ET)
+a8 + DEID_KEEP_FILE_CODES (part codes that also name files are kept).
+leak 8 (-1) · consistency 4 (-1) · distinct 2 · relationships 10 · engineering 10 · OLE hidden 4 · packaging 2 ·
+PDF removal 168 (-7) · PDF consistency 69 (-20) · triplets 21 (-8) · drawing/model 163 (+3) · OLE 4/4/25/25
+Verdict: rejected. Part-number replacement drives the PDF consistency/triplet checks far more than drawing/model.
+Packaging 2/10 in both a8 and a9 (a7: 5): suspect code/ quoting corpus strings (tests, IDEAS.md, docs) -> attempt 10
+drops those from code/ with the source kept exact.
