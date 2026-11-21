@@ -243,3 +243,5 @@ Newly missed vs registry11 (all project-own codes, values in gt-missed.tsv): two
 two 3D-printer part codes `<PROJ>1.2-M0xC0x.0P0xx`, one lab document number `D\d{7}`. Precision only +3 pts (75% -> 78%).
 Whatever filter changed in 12k (title-only? min-frequency? suffix words?) is dropping real part numbers: revert that part or whitelist
 codes that appear in a drawing title block AND as a file stem.
+
+- B: registry10k has the same 60% GT recall (parts 63%) as 12k. Prediction if a9 used it: PDF removal ~165-170 (a7: 175). a9 score will test the calibration.
