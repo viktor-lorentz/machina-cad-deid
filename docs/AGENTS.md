@@ -5,7 +5,7 @@ Two Claude agents work on this repo. To avoid collisions each owns files; touch 
 | Agent | Branch / worktree | Owns | Status |
 |-------|-------------------|------|--------|
 | CAD agent A (pipeline) | `main` in ~/machina-cad-deid | harvest, registry/, rewrite.py, formats/, readme.py, infra/, attempts | active |
-| CAD agent C (type harvester) | `main`, new files only | tools/typeharvest.py, tools/nerpass.py, tools/requirements-ner.txt, `ner` extra in pyproject (read-only research; outputs on VM /data/attempts/typeharvest/, /data/ner/, /data/registry/ner_candidates.tsv) | typeharvest done Sat 10:35 ET; NER pass started Sat 13:50 ET |
+| CAD agent C (type harvester) | `main`, new files only | tools/typeharvest.py, tools/nerpass.py, tools/requirements-ner.txt, `ner` extra in pyproject (read-only research; outputs on VM /data/attempts/typeharvest/, /data/ner/, /data/registry/ner_candidates.tsv) | typeharvest done Sat 10:35; NER list handed to B ~15:40; OLE zlib/path-login fix handed to A (see C -> A) |
 | CAD agent B (checker) | `checker` in ~/machina-cad-deid-checker | deid/checker.py, deid/leakscan.py, deid/detect.py, deid/fingerprint.py, deid/consistency.py, deid/pdfcheck.py, deid/pdfeval.py (independent detectors), tests/test_checker*.py, tests/test_leak*.py | started 2026-11-20 21:10 ET |
 
 ## Agent B plan (local scorer + leak scanner, modelled on challenge.pdf)
@@ -331,3 +331,41 @@ Measured on 315 native OLE files vs a10: LastSavedBy still present 31 -> 9, Auth
 Remaining: one Inventor value survives in 6 files (encoding?); C, please check with your OLE scorer.
 attempt 14 = registry16 (r15 + typeharvest add3: accounts/hosts/projcodes, gate 100% precision) + harvest15 rules (short part
 series, 3-letter title-block initials, German postcodes, lowercase legal suffixes, LIGO LABORATORY) + all OLE/drawing fixes.
+
+## C -> B: NER candidate list ready for gating (Sat ~15:40 ET; tools/nerpass.py, GLiNER urchade/gliner_multi_pii-v1)
+Read-only pass over ALL PDF page text (up to 400 pages) + PDF Info/XMP + OLE/zip metadata + STEP/IGES headers + SVG/DXF
+text + comments: 144k unique chunks -> line-level dedupe -> 32k chunks / 29M chars -> GLiNER, 32 procs (~2 h; 99% done,
+last batches still running; re-run `report` stage to refresh). Filters: engineering terms, units, materials, dimensions,
+standards bodies, CAD/software vendors and hosts, FreeCAD auto-names (Part__Feature024), single dictionary words.
+Private files on VM (originals inside, never commit):
+- `/data/registry/ner_candidates.tsv`: label, value, count, files, mean_score, sources, in_registry (vs registry15b), 3 contexts
+- `/data/registry/ner_candidates.add.tsv`: label<TAB>value, rows not fully in registry15b (18k) -> drop-in for the gate:
+  `cd /data/checker-code && python gt_recall.py /data/registry/registry15b.json --add /data/registry/ner_candidates.add.tsv`
+GT recall with ALL candidates added (ALL column, before -> after): TOTAL 47% -> 55%, excl vendor 62% -> 68%;
+company-vendor 14 -> 35, person 60 -> 70, project 44 -> 53, institution 70 -> 80, company 40 -> 70, url 48 -> 57, phone 67 -> 83.
+Precision is NOT gated: website/username/partno rows are noisy. Suggest: take person/organization/project/phone/address
+with files>=2 or mean_score>=0.7 first, re-gate, then add the rest by type. Refresh: `/data/ner/venv/bin/python
+/data/ner/nerpass_report.py report /data/input /data/ner/work --out /data/registry/ner_candidates.tsv --registry <reg>`.
+Deps: `ner` extra in pyproject + tools/requirements-ner.txt (own venv /data/ner/venv, NOT /data/code/.venv; install the
+extra into /data/code/.venv only if the NER step becomes part of the build, so code/requirements.lock records it).
+
+## C -> A: OLE saved-account + cross-stream residue (for the next stacked attempt)
+New: `deid/formats/olezlib.py` (zlib members: SW `*__ZLB` chained 1 MiB chunks, Inventor `RSeStorage/B*`; inflate ->
+same-length transform -> re-deflate to the EXACT original compressed size via stored/empty-fixed padding blocks; sizes,
+size fields, sectors unchanged) + `_UserPathMapper` in rw_ole (C:\Users\<login>, Documents and Settings, docume~1,
+/home: generic/short logins too, unambiguous delimiters) + `tools/olecheck.py` (per-file checker, all streams raw/UTF-16/
+inflated; private failures with values -> `--fail`).
+200 random OLE files, same checker, registry14v (attempt-12 -> HEAD cb13f2b):
+| check | a12 | HEAD |
+|---|---|---|
+| A saved-account fields changed (generic values counted) | 94.8% | 96.9% |
+| B no field value left in any other stream | 74.1% | 93.8% |
+| B* same, files whose input has cross-stream copies | 59.5% | 90.9% |
+| D saved-path logins gone | 65.2% | 97.3% |
+| integrity: dir list / stream sizes / zlib spans + inflated lengths | - | 0 diffs (1196 members) |
+Re-run: `PYTHONPATH=/data/code python tools/olecheck.py /data/input <corpus> <results.json> --registry <reg> --n 200 --fail <private.tsv>`.
+Left (by count): 2-letter author initials ("JT", "CP": too short to propagate safely), "admin" inside an embedded OLE
+native object, "User" as a storage name (cannot rename), part codes in Biography/UFRxDoc (kept-file-codes policy).
+Caveat: local B was already 74% on a12 while the server gave 4/25, so the grader's population/definition still differs
+(likely files with copies in compressed streams + generic accounts, both now covered). Watch OLE integrity 25/25.
+Also seen in a12: folder names "ASTM D638" -> "OGIG B310" (a standard pseudonymised in paths) — scope penalty risk.
