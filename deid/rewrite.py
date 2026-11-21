@@ -118,6 +118,25 @@ def rw_zip(data: bytes, m: Mapper, name_map=None, depth: int = 0) -> bytes:
     return out
 
 
+def _pdf_render_warnings(data: bytes, max_pages: int = 4) -> int:
+    """Count MuPDF warnings while opening and rendering the first pages at low resolution."""
+    import fitz
+
+    fitz.TOOLS.mupdf_display_errors(False)
+    fitz.TOOLS.reset_mupdf_warnings()
+    try:
+        doc = fitz.open(stream=data, filetype="pdf")
+        for i, page in enumerate(doc):
+            if i >= max_pages:
+                break
+            page.get_text()
+            page.get_pixmap(dpi=12)
+    except Exception:
+        return 10**6
+    w = fitz.TOOLS.mupdf_warnings()
+    return len(w.splitlines()) if w else 0
+
+
 def rw_pdf(data: bytes, m: Mapper, streams: bool = True) -> bytes:
     import pikepdf
 
@@ -243,14 +262,20 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
     if head.startswith(b"%PDF") or e == "pdf":
         from deid.formats import pdftext
 
+        orig = data
         try:
             data = pdftext.rewrite(data, m)
         except Exception:
             pass
         try:
-            return rw_pdf(data, m)
+            out = rw_pdf(data, m)
         except Exception:
-            return rw_pdf(data, m, streams=False)
+            out = rw_pdf(data, m, streams=False)
+        if out != orig and _pdf_render_warnings(out) > _pdf_render_warnings(orig):
+            # something we touched no longer renders cleanly: keep the safest variant
+            safe = rw_pdf(orig, m, streams=False)
+            return safe if _pdf_render_warnings(safe) <= _pdf_render_warnings(orig) else orig
+        return out
     if head.startswith(b"PK\x03\x04") and (e in ZIP_EXT) and depth < 4:
         if e in ARCHIVE_EXT and not G.get("archives", False):
             return data
