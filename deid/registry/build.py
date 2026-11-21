@@ -86,6 +86,23 @@ def is_common(s: str, words: set[str]) -> bool:
     return t in STOP or t in words or alnum_len(t) < 4 or re.fullmatch(r"[\d\W_]+", t) is not None
 
 
+GENERIC_LOCAL = set("""contact info sales support admin office mail hello service services help webmaster
+postmaster noreply no-reply team marketing press enquiries enquiry inquiries orders order custhelp customerservice
+custserv billing accounts hr jobs careers feedback design engineering tech technical general reception
+newsletter shop store kontakt vertrieb bestellung contacto ventas""".split())
+
+
+def _words():
+    global _WORDS_CACHE
+    try:
+        return _WORDS_CACHE
+    except NameError:
+        from deid.formats.pdftext import _common_words
+
+        _WORDS_CACHE = _common_words()
+        return _WORDS_CACHE
+
+
 def expand(value: str, kind: str) -> list[tuple[str, str]]:
     """Derive extra surface forms (e.g. DOMAIN\\user -> user, email -> domain)."""
     out = [(value, kind)]
@@ -95,7 +112,10 @@ def expand(value: str, kind: str) -> list[tuple[str, str]]:
         out += [(m.group(1), "account"), (m.group(2), "account")]
     if kind == "email" and "@" in v and valid_email(v):
         local, dom = v.rsplit("@", 1)
-        out.append((local, "account"))
+        ll = local.lower()
+        # role mailboxes and dictionary words (contact@, info@, sales@) are not standalone accounts
+        if ll not in GENERIC_LOCAL and ll not in _words() and len(ll) >= 4:
+            out.append((local, "account"))
         if dom.lower() not in MAIL_PROVIDERS:
             out.append((dom, "domain"))
     if kind == "domain" and v.lower().startswith("www."):
