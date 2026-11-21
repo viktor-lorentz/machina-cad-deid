@@ -1,13 +1,19 @@
-"""Deterministic, collision-free pseudonyms and a global replacement mapper.
+"""Deterministic same-length pseudonyms and a fast global replacer.
 
-One Mapper instance holds every identity found in the corpus. The same
-original string always yields the same pseudonym; different identities stay
-distinct. Two flavours exist:
+Design
+------
+Every identity maps to ONE pseudonym with exactly the same length and layout
+as the original: letters stay letters (pronounceable syllables), digits stay
+digits, separators stay where they are. The case of each occurrence is
+re-applied per character. Consequences:
 
-* natural(): readable replacement of any length, for text formats.
-* samelen(): replacement with exactly the same number of characters, keeping
-  character classes (upper/lower/digit/punctuation), for binary formats where
-  byte offsets must not shift.
+* the same identity reads the same everywhere (text, binary, paths);
+* byte offsets never shift, so length-prefixed strings (SAT), Hollerith
+  fields (IGES), fixed-size OLE streams and binary headers stay valid;
+* pseudonyms are name-like, never blanks or redaction marks.
+
+Matching is ASCII-case-insensitive with alphanumeric word boundaries, done
+with an Aho-Corasick automaton over bytes (ASCII and UTF-16LE).
 """
 
 from __future__ import annotations
@@ -17,156 +23,150 @@ import hmac
 import re
 from dataclasses import dataclass, field
 
-_FIRST = ["Alder", "Birch", "Cedar", "Dune", "Ember", "Flint", "Grove", "Harbor",
-          "Iris", "Juniper", "Kestrel", "Lumen", "Maple", "Nova", "Onyx", "Pine",
-          "Quartz", "Raven", "Sable", "Tundra", "Umber", "Vale", "Willow", "Zephyr"]
-_SECOND = ["Works", "Labs", "Dynamics", "Systems", "Robotics", "Design", "Forge",
-           "Machines", "Tech", "Industries", "Studio", "Engineering"]
-_PEOPLE_F = ["Alex", "Blake", "Casey", "Drew", "Emery", "Finley", "Gray", "Harper",
-             "Indy", "Jordan", "Kai", "Logan", "Morgan", "Noel", "Parker", "Quinn",
-             "Riley", "Sage", "Taylor", "Wren"]
-_PEOPLE_L = ["Ashford", "Bellamy", "Carver", "Dalton", "Ellis", "Fenwick", "Garland",
-             "Hollis", "Ingram", "Jarvis", "Kendall", "Lowell", "Mercer", "Nash",
-             "Osborne", "Prescott", "Quincy", "Rowan", "Sutton", "Thatcher"]
+import ahocorasick
 
-_UP = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-_LO = "abcdefghijklmnopqrstuvwxyz"
-_DG = "0123456789"
+_CONS = "bdfgklmnprstvz"
+_VOW = "aeiou"
+_ALNUM = re.compile(r"[A-Za-z0-9]")
 
 
 def norm(s: str) -> str:
-    """Normalized identity key: case-folded, whitespace collapsed."""
-    return re.sub(r"\s+", " ", s.strip()).casefold()
+    return re.sub(r"\s+", " ", s.strip()).lower()
 
 
-def _digest(secret: bytes, kind: str, key: str, salt: int = 0) -> bytes:
-    return hmac.new(secret, f"{kind}|{key}|{salt}".encode(), hashlib.sha256).digest()
+def _stream(secret: bytes, key: str, salt: int):
+    block = hmac.new(secret, f"{key}|{salt}".encode(), hashlib.sha256).digest()
+    while True:
+        yield from block
+        block = hashlib.sha256(block).digest()
 
 
-def _case_like(orig: str, new: str) -> str:
-    if orig.isupper():
-        return new.upper()
-    if orig.islower():
-        return new.lower()
-    return new
+def _base(secret: bytes, key: str, salt: int) -> str:
+    """Lowercase pseudonym skeleton with the same layout as `key`."""
+    rnd = _stream(secret, key, salt)
+    out = []
+    vowel_next = next(rnd) % 2 == 0
+    for ch in key:
+        if "a" <= ch <= "z":
+            out.append(_VOW[next(rnd) % 5] if vowel_next else _CONS[next(rnd) % len(_CONS)])
+            vowel_next = not vowel_next
+        elif "0" <= ch <= "9":
+            out.append(str(next(rnd) % 10))
+        else:
+            out.append(ch)
+            vowel_next = next(rnd) % 2 == 0
+    return "".join(out)
+
+
+def apply_case(occurrence: str, base: str) -> str:
+    """Map base's alnum chars onto occurrence's alnum positions, keeping case."""
+    alnum = [c for c in base if _ALNUM.match(c)]
+    res, i = [], 0
+    for ch in occurrence:
+        if _ALNUM.match(ch) and i < len(alnum):
+            c = alnum[i]
+            i += 1
+            res.append(c.upper() if ch.isupper() else c)
+        else:
+            res.append(ch)
+    return "".join(res)
 
 
 @dataclass
 class Mapper:
     secret: bytes = b"machina-deid-default-secret"
-    # norm(original) -> (kind, pseudonym_natural)
-    entries: dict[str, tuple[str, str]] = field(default_factory=dict)
-    _used: set[str] = field(default_factory=set)
-    _regex: re.Pattern | None = None
+    entries: dict[str, str] = field(default_factory=dict)  # norm(original) -> base pseudonym
+    kinds: dict[str, str] = field(default_factory=dict)
+    _taken: set[str] = field(default_factory=set)
+    _auto: dict = field(default_factory=dict)
 
-    # -- registration ------------------------------------------------------
     def add(self, original: str, kind: str = "name") -> str:
         key = norm(original)
-        if not key:
-            return original
+        if len(_ALNUM.findall(key)) < 2:
+            return key
         if key in self.entries:
-            return self.entries[key][1]
+            return self.entries[key]
         salt = 0
         while True:
-            cand = self._natural(kind, key, salt)
-            if norm(cand) not in self._used and norm(cand) != key:
+            cand = _base(self.secret, key, salt)
+            if cand != key and cand not in self._taken and cand not in self.entries:
                 break
             salt += 1
-        self._used.add(norm(cand))
-        self.entries[key] = (kind, cand)
-        self._regex = None
+        self._taken.add(cand)
+        self.entries[key] = cand
+        self.kinds[key] = kind
+        self._auto.clear()
         return cand
 
-    def _natural(self, kind: str, key: str, salt: int) -> str:
-        d = _digest(self.secret, kind, key, salt)
-        n = int.from_bytes(d[:8], "big")
-        if kind == "person":
-            return f"{_PEOPLE_F[n % len(_PEOPLE_F)]} {_PEOPLE_L[(n >> 8) % len(_PEOPLE_L)]}{(n >> 16) % 97 if salt else ''}"
-        if kind == "email":
-            return f"user{n % 100000:05d}@example.invalid"
-        if kind == "domain":
-            return f"{_FIRST[n % len(_FIRST)].lower()}{(n >> 8) % 1000:03d}.example.invalid"
-        if kind == "account":
-            return f"{_FIRST[n % len(_FIRST)].lower()}-{_SECOND[(n >> 8) % len(_SECOND)].lower()}-{(n >> 16) % 1000:03d}"
-        # company / project / part / generic
-        return f"{_FIRST[n % len(_FIRST)]} {_SECOND[(n >> 8) % len(_SECOND)]}{(n >> 16) % 97 if salt else ''}"
+    def pseudonym(self, occurrence: str) -> str:
+        return apply_case(occurrence, self.entries[norm(occurrence)])
 
-    # -- pseudonyms --------------------------------------------------------
-    def natural(self, original: str, kind: str = "name") -> str:
-        """Readable pseudonym, any length. Registers the identity if new."""
-        return _case_like(original, self.add(original, kind))
-
-    def samelen(self, original: str) -> str:
-        """Pseudonym with identical length and per-character class."""
-        key = norm(original)
-        d = _digest(self.secret, "samelen", key)
-        out = []
-        stream = d
-        i = 0
-        for ch in original:
-            if i >= len(stream):
-                stream = hashlib.sha256(stream).digest()
-                i = 0
-            b = stream[i]
-            i += 1
-            if ch in _UP:
-                out.append(_UP[b % 26])
-            elif ch in _LO:
-                out.append(_LO[b % 26])
-            elif ch in _DG:
-                out.append(_DG[b % 10])
-            else:
-                out.append(ch)
-        res = "".join(out)
-        if res == original and len(original) > 1:
-            res = res[::-1] if res[::-1] != original else res
-        return res
-
-    # -- bulk replacement --------------------------------------------------
-    def _compile(self) -> re.Pattern | None:
-        if self._regex is None and self.entries:
-            # originals are stored normalized; match case-insensitively with
-            # flexible whitespace, longest first.
-            alts = sorted(self.entries, key=len, reverse=True)
-            parts = [r"\s+".join(re.escape(w) for w in a.split(" ")) for a in alts]
-            self._regex = re.compile("|".join(parts), re.IGNORECASE)
-        return self._regex
-
-    def replace_text(self, text: str, same_length: bool = False) -> str:
-        rx = self._compile()
-        if rx is None:
-            return text
-
-        def sub(m: re.Match) -> str:
-            orig = m.group(0)
-            if same_length:
-                return self.samelen(orig)
-            return _case_like(orig, self.entries[norm(orig)][1])
-
-        return rx.sub(sub, text)
-
-    def replace_bytes(self, data: bytes) -> bytes:
-        """Same-length replacement on raw bytes (ASCII and UTF-16LE)."""
-        for key in sorted(self.entries, key=len, reverse=True):
-            for enc in ("ascii", "utf-16-le"):
+    # -- automaton ---------------------------------------------------------
+    def _automaton(self, enc: str):
+        if enc not in self._auto:
+            A = ahocorasick.Automaton(ahocorasick.STORE_ANY, ahocorasick.KEY_SEQUENCE)
+            n = 0
+            for key in self.entries:
                 try:
-                    needle = key.encode(enc)
+                    kb = key.encode(enc)
                 except UnicodeEncodeError:
                     continue
-                if len(needle) < 3:
-                    continue
-                rx = re.compile(
-                    b"".join(re.escape(bytes([c])) if c != 0x20 else b"[ _]" for c in needle)
-                    if enc == "ascii"
-                    else re.escape(needle),
-                    re.IGNORECASE,
-                )
+                A.add_word(tuple(kb), (len(kb), key))
+                n += 1
+            if n:
+                A.make_automaton()
+            self._auto[enc] = A if n else None
+        return self._auto[enc]
 
-                def sub(m: re.Match, enc=enc) -> bytes:
-                    raw = m.group(0)
-                    text = raw.decode(enc, "replace")
-                    rep = self.samelen(text).encode(enc, "replace")
-                    return rep if len(rep) == len(raw) else raw
+    def find(self, data: bytes, enc: str = "ascii") -> list[tuple[int, int, str]]:
+        """Non-overlapping (start, end, key) matches, longest first."""
+        A = self._automaton(enc)
+        if A is None or not data:
+            return []
+        low = data.lower()
+        unit = 2 if enc == "utf-16-le" else 1
+        hits = []
+        for end_idx, (ln, key) in A.iter(tuple(low)):
+            start, end = end_idx - ln + 1, end_idx + 1
+            if _is_word(data, start - unit, unit) or _is_word(data, end, unit):
+                continue
+            hits.append((start, end, key))
+        hits.sort(key=lambda h: (h[0], -(h[1] - h[0])))
+        out, last = [], -1
+        for h in hits:
+            if h[0] >= last:
+                out.append(h)
+                last = h[1]
+        return out
 
-                data = rx.sub(sub, data)
-        return data
+    def replace_bytes(self, data: bytes, encodings=("ascii", "utf-16-le")) -> bytes:
+        """Same-length replacement of every registered identity."""
+        if not self.entries:
+            return data
+        buf = None
+        for enc in encodings:
+            src = bytes(buf) if buf is not None else data
+            hits = self.find(src, enc)
+            if not hits:
+                continue
+            if buf is None:
+                buf = bytearray(data)
+            for s, e, key in hits:
+                occ = src[s:e].decode(enc, "replace")
+                rep = self.pseudonym(occ).encode(enc, "replace")
+                if len(rep) == e - s:
+                    buf[s:e] = rep
+        return bytes(buf) if buf is not None else data
+
+    def replace_text(self, text: str) -> str:
+        b = text.encode("utf-8", "surrogateescape")
+        return self.replace_bytes(b, ("ascii",)).decode("utf-8", "surrogateescape")
+
+
+def _is_word(data: bytes, pos: int, unit: int) -> bool:
+    if pos < 0 or pos + unit > len(data):
+        return False
+    c = data[pos]
+    if unit == 2 and data[pos + 1] != 0:
+        return False
+    return (48 <= c <= 57) or (65 <= c <= 90) or (97 <= c <= 122)

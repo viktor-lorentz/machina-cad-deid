@@ -1,34 +1,39 @@
 from deid.registry.pseudonym import Mapper
 
 
-def test_same_identity_same_pseudonym_case_insensitive():
+def test_same_identity_same_pseudonym_any_case():
     m = Mapper()
-    a = m.natural("Acme Robotics", "company")
-    assert m.natural("ACME ROBOTICS", "company").lower() == a.lower()
-    assert m.natural("acme  robotics", "company").lower() == a.lower()
+    m.add("BrainCOGS", "account")
+    a = m.replace_text("BrainCOGS")
+    b = m.replace_text("braincogs")
+    assert a.lower() == b and len(a) == 9 and a != "BrainCOGS"
+    assert a[0].isupper() and a[5:].isupper()
 
 
 def test_distinct_identities_stay_distinct():
     m = Mapper()
-    names = [f"Company {i}" for i in range(500)]
-    out = {m.add(n, "company").casefold() for n in names}
+    out = {m.add(f"company{i:03d}") for i in range(500)}
     assert len(out) == 500
 
 
-def test_samelen_preserves_length_and_classes():
+def test_layout_preserved():
     m = Mapper()
-    s = "John_Smith-42"
-    r = m.samelen(s)
-    assert len(r) == len(s) and r != s
-    assert r[4] == "_" and r[10] == "-"
-    assert r[:4].isalpha() and r[-2:].isdigit()
-    assert m.samelen(s) == r
+    m.add("Jane Doe-42")
+    r = m.replace_text("Jane Doe-42")
+    assert len(r) == 11 and r[4] == " " and r[8] == "-" and r[9:].isdigit()
 
 
-def test_replace_text_and_bytes():
+def test_word_boundaries():
+    m = Mapper()
+    m.add("ecto")
+    assert m.replace_text("vector ecto_part") .startswith("vector ")
+    assert "ecto" not in m.replace_text("vector ecto_part").split(" ")[1]
+
+
+def test_bytes_ascii_and_utf16_same_length():
     m = Mapper()
     m.add("Jane Doe", "person")
-    assert "Jane Doe" not in m.replace_text("author: Jane Doe, jane doe")
-    raw = b"xx Jane Doe yy " + "Jane Doe".encode("utf-16-le")
+    raw = b"xx Jane Doe yy " + "JANE DOE".encode("utf-16-le") + b"\x00\x00"
     out = m.replace_bytes(raw)
-    assert len(out) == len(raw) and b"Jane Doe" not in out
+    assert len(out) == len(raw)
+    assert b"Jane Doe" not in out and "JANE DOE".encode("utf-16-le") not in out
