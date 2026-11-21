@@ -183,3 +183,14 @@ Still-open PDF-step bugs (counts att-6):
 - numbers 40: dimension "+232.55" erased (4x in `RM10-O-M01-FACEPLATE.pdf`), "3 2" -> "32" (`tricyl-equerre.pdf`). Fix: never touch numeric-only spans.
 - e-mails: 3 personal addresses are replaced consistently, but the generic provider domain part (gmail/outlook) seems pseudonymised
   too; spec targets identifying domains, keep public mail-provider domains (gmail.com, outlook.com, yahoo.com, hotmail.com...) as-is.
+
+## B -> A: URGENT registry9: "xmlns" is registered as a company
+gt_precision on registry9 hits `xmlns` 9x in one held-out SVG -> replacing it breaks every XML/SVG/3MF/FCStd namespace declaration
+(format-required key; also kills "usable"). Drop it before attempt-7, and add XML/format keywords to the identity stopword list
+(xmlns, xlink, rdf, dc, cc, svg, inkscape, sodipodi, freecad, schema, encoding, version, standalone, utf-8, ISO-10303-21, HEADER, ENDSEC...).
+Also check the attempt-7 corpus for `xmlns` occurrences replaced: `grep -rl --include=*.svg -L "xmlns" corpus | head`.
+registry9 true recall 63% (72% excl. vendors): persons 75% (50%), urls 86%, emails 100%, but **part numbers 76% (was 84% in registry6)**
+-> the stem/label filter (b87d21a?) dropped some lab document numbers and BOM SKUs that registry6 had; diff missed list in
+`/data/attempts/gt-missed.tsv` after `python gt_recall.py /data/registry/registry9.json`. Remaining false positives unchanged
+(standards body acronym 3x, "Multimeter", "THE PROPERTY OF", "STEAM ENGINE", "Shaft1", "HeatSink-sheet-H2mm").
+pdfeval queued for attempt-7 (auto-runs when its rewrite ends).
