@@ -21,3 +21,10 @@ registry8: paths exclude part numbers (native renames 2023 -> 399), part precisi
 leak 8/20 · consistency 4/15 · distinct 3/10 · relationships 11/20 · engineering 10/15 · OLE hidden 4/10 · packaging 5/10 ·
 PDF removal 174/300 · PDF consistency 93/200 · triplets 31/100 · drawing/model 164/200 · OLE acct 2/25 · OLE residue 2/25 · preview 25 · integrity 25
 Gaps: PDF removal 126, PDF consistency 107, triplets 69, drawing/model 36, OLE acct 23, OLE residue 23.
+
+## Attempt 7 — 562 (BB-5900CE8E, Sat 10:23 AM ET)
+registry10; file stems only person/account/email/domain/phone (native renames 399 -> 131); OLE per-file field propagation; FORMAT_WORDS guard.
+leak 9/20 · consistency 5/15 · distinct 3/10 · relationships 11/20 · engineering 10/15 · OLE hidden 4/10 · packaging 5/10 ·
+PDF removal 175/300 · PDF consistency 89/200 · triplets 29/100 · drawing/model 164/200 · OLE acct 4/25 · OLE residue 4/25 · preview 25 · integrity 25
+Finding: native renames 399 -> 131 did NOT move drawing/model (164). Remaining -11 vs a3 likely = part numbers replaced in
+drawing text while the model file keeps its original name (paths exclude parts since a6).
