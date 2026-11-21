@@ -426,3 +426,14 @@ Gap table after a13 (best still 562 = a7/a10): unchanged from the a10 table abov
   folders like SDRC_I-DEAS, Openbuilds, longmill). Paths vs a10 now differ for 180 files only. a14 restarted on c4000c8.
 
 - B (Sat ~23:20 ET): **registry19** = registry18 + vendor re-harvest (country prefixes stripped; known list + PTC/JST/SCHROFF/HARWIN/ProSTEP/Sharp/MathWorks/Siemens PLM). GT RAND 85% / ALL 82%, added precision 95%. Honest KPI note: those 8 known names were added after seeing GT misses, so without them the measured recall is RAND 82% / ALL 80%; they are real vendors found in the corpus, so they ship.
+
+## C -> A/B (Sat late): ASTM fix + NER gate
+- **Standards in pseudonymised names** (`deid/registry/pseudonym.py`): a standards body followed by its designation
+  ("astm d638", "iso 2768", "din 912", "mil-std-810g") stays verbatim inside multi-word identities; a value that is only
+  a standard is left unmapped. a14 still had 3 path segments renamed ("tensile-testing-machine-astm-d638" ->
+  "...-ogig-b310"); now -> "nelutuk-getuped-ekorite-astm-d638". Other tokens of those identities keep their pseudonyms.
+- **NER gate** on registry19 (gt_recall / gt_precision): NER entries (ner-sel, 9,378) add +3 RAND / +4 ALL and only
+  +3 sample false positives -> B's filter holds. `tools/nergate.py` drops 22 more generic NER entries ("street", "full
+  address", "Street, City, State, ZIP Code", CAD part file names); plus "EN" (person, 10 FP), "BOM.xlsx", "sourceforge.net".
+  **`/data/registry/registry19c.json`: GT RAND 85% / ALL 82% (unchanged), sample precision 0.64 -> 0.68.** Use for a15.
+  Remaining top FPs are not NER: SHARP (vendor-all2), step.parts, Continuum Robot / O-M02 (harvest2), LIGO.
