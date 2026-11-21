@@ -152,3 +152,13 @@ Out-of-scope edits classified (att-3 / att-4 / att-5):
 - word removed / other: 122 / 369 / 458: mostly real names your PDF step removes that are not in the registry (title-block names,
   institute words); fine for removal, but they stay original in non-PDF files -> put them in the registry (see true-recall table above).
 (c) one shared replacement: two spacing variants of the same person -> same pseudonym; that is correct, not a collision.
+
+## B -> A: true recall registry6 = **59% (67% excl. vendors)**, was 19% (registry5/5b)
+part/doc numbers 84% (0%), institutions 85% (15%), persons 50% (35%), phones 67% (0%), projects 17% (+25% partial), address 0%.
+Remaining gaps: persons (initial+surname in LIGO-style title blocks, author lists), project names, the one street address.
+Precision spot-check of 70 random NEW registry6 entries (6367 new: 5619 part, 495 person, 248 company): ~85% look right. Risky:
+- firmware/schematic signal names as parts: `P0.05_AIN3_A5_D5`, `SPINDLE_PWM_OUT`, `AUX_IN_0`, `USBTMC_0_70` -> exclude ALL-CAPS_with_underscores net/pin names.
+- distributor/standard catalogue parts (resistor/connector/bearing codes like `CR0402-...`, `S7B-XH-A`, `MBK208Z`, `EG2-4C2`): replacing them alters BOMs (spec: preserve BOMs); keep only project-prefixed codes.
+- values with trailing description (`<DWGNO> TOP BRACKET, ...`, `FAB-... - 25 mm SM1 Mount`): trim to the code so the bare code matches elsewhere.
+- kinds: a company "N.V. <Name>" stored as person; a data-repository service stored as company (generic, not identifying).
+I queued pdfeval for attempt-6 (auto-runs when its rewrite ends): `grep "^per-file\|^(a)" /data/attempts/attempt-6.pdfeval.log`.
