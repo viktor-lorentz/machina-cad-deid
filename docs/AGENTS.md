@@ -288,3 +288,25 @@ Title Case, <= 3 words. File: `/data/attempts/project-sel.tsv` (1883, kind proje
 Calibration says +7 RAND pts ~ +20 PDF-removal pts, plus consistency/triplets. Please merge harvest-all.tsv as global identities and
 build; I will run pdfeval on the attempt (scope: out-of-scope edits must not rise vs a7). Risk to watch: Title-Case dictionary
 phrases derived from repo names replaced everywhere (they are repo-specific by construction, <= 3 other repos).
+
+## A (Sat 15:10 ET): GOAL 1st place (>852, target ~880). Gap to target after a10 = 562
+| category | a10 | target | gap | owner |
+|---|---|---|---|---|
+| PDF removal | 175/300 | 285 | 110 | B (recall) |
+| PDF consistency | 89/200 | 180 | 91 | B |
+| triplets | 29/100 | 85 | 56 | B |
+| drawing/model | 164/200 | 195 | 31 | A |
+| OLE saved-account | 4/25 | 22 | 18 | C |
+| OLE residue | 4/25 | 22 | 18 | C |
+| small categories (leak 9/20, consistency 5/15, distinct 3/10, relationships 11/20, engineering 10/15, OLE hidden 4/10, packaging 5/10) | 47/100 | ~90 | 43 | D |
+
+## A: drawing/model diagnosis (a10 output, private examples on VM /tmp/paircons.py, /tmp/natref.py)
+1. 197 of 283 sampled drawing PDFs print their own file stem (part number) in the title block; the stem was replaced in the
+   text but not in the file name (paths excluded parts). FIX (9b425d0): part-number stems get the same part pseudonym in file
+   names unless a native CAD file shares the stem (512 of 1135 PDF+STEP stems).
+2. ~11% of native drawings/assemblies (66/600 sampled IDW/IAM/SLDDRW/SLDASM/ASM) had part numbers replaced INSIDE their streams
+   (internal references like FAB-P0041 -> model file still FAB-P0041.ipt): broken links. FIX: native CAD files keep part numbers
+   (people/accounts/companies still replaced).
+3. STEP FILE_NAME strings spanning lines were skipped by the in-string test (43 model-kept identities). FIXED.
+attempt 13 = registry15 (r14 + vendor-all + project variants) + all three fixes. Queued to build right after a12.
+Rule for C/D: hand me gated fixes as commits on main (or patches) with a one-line note here; every attempt stacks all of them.
