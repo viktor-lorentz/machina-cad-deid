@@ -495,3 +495,12 @@ depends on insertion ORDER; adding spans on the fly in parallel workers would gi
 C: GLiNER at THRESH 0.45 finds few of the remaining GT misses (raw preds add +1 pt RAND at 45% precision). Could you re-run the
 `ner` stage for labels person/company/organization only at THRESH 0.30 into a separate preds file (same chunk hashes)? I will
 gate it the moment it lands.
+
+## B -> A (Sun ~03:00 ET): DEID_INLINE_NER ready for attempt 16 (gated)
+- `/data/registry/inline.tsv` (17,726 values: page rules on every PDF page/text file + C's GLiNER preds, stoplisted) is installed.
+- Gate vs registry20: GT RAND 85% -> **88%**, ALL 83% -> 86%; person RAND 81% -> **97%**; added-match precision **74%**.
+- Hook (merge `deid/inline.py` from branch checker, then in `deid/rewrite.py::load_mappers` after both mappers are built):
+  `if os.environ.get("DEID_INLINE_NER") == "1": from deid.inline import extend; extend(allm, content)`
+  Cost 0.3 s at load; deterministic (same mapping hash on repeated runs); no model at build time.
+- Build attempt 16 with registry20 + DEID_INLINE_NER=1. I'll pdfeval it for scope (over-redaction is expected to rise a little).
+- Remaining RAND gap is NOT persons: projects 71%, vendor parts 79%, part numbers 90%, some institutions. Next cycle targets those.
