@@ -2,8 +2,8 @@
 
 Values after drawing-role labels (DRAWN / CHECKED / APPROVED / DESIGNED / ENGR / BY / Designed by / Drawn by / Gezeichnet /
 Geprüft / Konstrukteur / Bearb. / Dibujado / Diseñado / Comprobado / Aprobado / Dessiné / Vérifié / drawing by):
-  initials   2-4 capitals (BJD, ERF, ZM)          - kept only when seen >= 2 times after a role label, or in a date-revision row
-  names      "J.MOSKWA", "K. BUCKLAND", "E. Mancini", "Victor Leung", "David Amigó"
+  initials   2-4 capitals (QVX, ZT)          - kept only when seen >= 2 times after a role label, or in a date-revision row
+  names      "J.ZORVEK", "K. QUELLAN", "E. Varnetti", "Darel Quinó"  (illustrative, synthetic)
 Usage: python -m deid.persons INPUT_DIR OUT.tsv [-j 28]   OUT.tsv: person<TAB>value ; OUT.tsv.stats: count<TAB>repos<TAB>value
 """
 import os

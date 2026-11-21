@@ -8,7 +8,7 @@ Build-time hook (deterministic: values are added in sorted order before workers 
     from deid.inline import extend; extend(allm, content)      # reads $DEID_INLINE_TSV (default /data/registry/inline.tsv)
 
 Page rules (no corpus-frequency threshold; over-redaction is cheap, misses are not):
-  author lists   "Taylor, Moore, and Armstrong", "A and B", "X et al.", "Smith, J.", "J. Smith"
+  author lists   "Quorvel, Brastin, and Ylandor", "A and B", "X et al.", "Smith, J.", "J. Smith"
   role fields    DRAWN/CHECKED/APPROVED/Designed by/... values and initials (deid.persons rules)
   name + date    "<Name|INITIALS> dd/mm/yyyy" on a page that carries role labels (title blocks printed value-first)
   sign-off       "Prepared by|Signed|Signature|Author(s)|Contact|Responsible: <Name>"
@@ -22,13 +22,17 @@ from collections import Counter
 from multiprocessing import Pool
 
 from deid import persons as P
-from deid.registry.pseudonym import norm
+
+
+def norm(v):
+    from deid.registry.pseudonym import norm as _n
+    return _n(v)
 
 _COMMON = None
 
 
 def common(w):
-    """True for ordinary (lower-case) dictionary words; proper names (Taylor, Moore) are not common."""
+    """True for ordinary (lower-case) dictionary words; proper names are not common."""
     global _COMMON
     if _COMMON is None:
         try:
@@ -51,6 +55,10 @@ NAMEDATE = re.compile(r"(?<![A-Za-z])(" + CAP + r"(?:\s" + CAP + r")?|[A-Z]{2,4}
 SIGN = re.compile(r"(?i:\b(?:prepared\s*by|signed|signature|authors?|contact|responsible|verantwortlich|bearbeiter|autor(?:es)?|elaborado\s*por)"
                   r")\s*[:.]?\s*(" + CAP + r"(?:\s" + CAP + r"){0,2})")
 ROLECUE = re.compile(r"(?i)\b(?:drawn|checked|approved|designed|designer|engr|dibujado|gezeichnet|gepr[üu]ft|comprobado|dessin[ée])\b")
+ORGAFTER = re.compile(r"\s([A-Z]{2,8}(?:\s[A-Z]{2,8}){0,2})(?![A-Za-z])")
+ORGBEFORE = re.compile(r"([A-Z]{2,8}(?:\s[A-Z]{2,8}){0,2})\s$")
+PHONE = re.compile(r"(?i:\b(?:phone|tel(?:ephone|efon)?|mob(?:ile)?|cell|fax|handy|t[ée]l[ée]phone)\b)\.?\s*[:.]?\s*((?:\+|00|OO|0)?[\dO][\d O().\-/]{6,22}\d)")
+DOCID = re.compile(r"(?i:\bdoc(?:ument)?\.?\s*(?:id|no\.?|number|#))\s*[:.]?\s*([A-Z0-9][A-Za-z0-9\-_.]{3,24}[A-Za-z0-9])")
 EMAIL = re.compile(r"[A-Za-z0-9._%+\-]{1,64}@[A-Za-z0-9.\-]{1,120}\.[A-Za-z]{2,10}")
 
 
@@ -102,6 +110,21 @@ def page_spans(t):
             out.append(("person", m.group(1)))
     for m in EMAIL.finditer(flat):
         out.append(("email", m.group(0)))
+        # organisation printed next to the address whose domain names it: "qel@lab.zqx.example ZQX LAB"
+        labels = {x.lower() for x in m.group(0).split("@")[1].split(".")[:-1] if len(x) >= 2}
+        for mm in (ORGAFTER.match(flat, m.end()), ORGBEFORE.search(flat[max(0, m.start() - 40):m.start()])):
+            if mm and mm.group(1).split()[0].lower() in labels:
+                toks = mm.group(1).split()
+                while len(toks) > 1 and (toks[-1] in P.STOP or P.ROLEW.match(toks[-1]) or toks[-1] in P.JARGON):
+                    toks.pop()
+                out.append(("company", " ".join(toks)))
+    for m in PHONE.finditer(flat):
+        v = m.group(1).strip(" -")
+        if sum(c.isdigit() for c in v) >= 7:
+            out.append(("phone", v))
+    for m in DOCID.finditer(flat):
+        if re.search(r"\d", m.group(1)):
+            out.append(("part", m.group(1)))
     return out
 
 
@@ -270,6 +293,10 @@ def expand_file(path):
                 v = b[gs:ge].decode("utf-8", "ignore")
                 if re.search(r"\d", v) and re.search(r"[A-Za-z]", v) and v.isascii():
                     out.add(("part", v))
+            for pm in (re.compile(rb"/([A-Z][A-Za-z0-9&\-]{2,24})(?![A-Za-z0-9/])").match(b, e),
+                       re.compile(rb"(?<![A-Za-z0-9/])([A-Z][A-Za-z0-9&\-]{2,24})/$").search(b[max(0, s - 26):s])):
+                if pm and not common(pm.group(1).decode("ascii", "ignore")) and _MAP.kinds.get(norm(b[s:e].decode("utf-8", "ignore"))) in ("company", "vendor", "organization"):
+                    out.add(("company", pm.group(1).decode("ascii", "ignore")))
             m = SUFFIX.match(b, e)
             if m and b[s:s + 1].isupper():
                 out.add(("company", b[s:m.end()].decode("utf-8", "ignore")))

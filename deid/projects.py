@@ -4,7 +4,7 @@ Candidates:
   repo   - word n-grams (1..4) of each repository name (sources/<host>/<owner>__<repo>), split on separators and camelCase,
            kept when they occur >= 2 times in that repo's own text and in at most MAX_OTHER other repos (specificity).
   label  - values after "Project:", "Projekt:", "Proyecto:", "Projet:", "Project name:" and "<X>-Projekt" / "<X> Project".
-Surface forms are emitted exactly as they appear in text (e.g. "Bento-Arm", "BCN3D Moveo").
+Surface forms are emitted exactly as they appear in text (e.g. "Zarvo-Arm", "QX5D Vorlo"; synthetic).
 Usage: python -m deid.projects INPUT_DIR OUT.tsv [-j 28]      OUT.tsv: kind<TAB>value  (private)
        OUT.tsv.stats: count<TAB>repos<TAB>source<TAB>value
 """
