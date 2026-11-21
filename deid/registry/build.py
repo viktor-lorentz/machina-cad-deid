@@ -408,7 +408,10 @@ def build(candidates_path: str, out_path: str) -> dict:
         del reg[k]
     for row in field_rows:
         v = re.sub(r"\s+", " ", clean(row["value"]))
-        if v and v.lower() not in reg and alnum_len(v) >= 2 and len(v) <= 80 and not PLACEHOLDER.search(v):
+        from deid.formats.swx import field_ok
+
+        if v and v.lower() not in reg and alnum_len(v) >= 2 and len(v) <= 80 and not PLACEHOLDER.search(v) \
+                and field_ok(v) and v.lower() not in FORMAT_WORDS:
             reg[v.lower()] = {"value": v, "kind": row["kind"][:-6], "scope": "field", "files": row["files"]}
     out = {"identities": sorted(reg.values(), key=lambda r: -r["files"]),
            "defects": data.get("defects", {})}
