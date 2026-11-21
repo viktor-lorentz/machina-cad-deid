@@ -309,8 +309,9 @@ def build(candidates_path: str, out_path: str) -> dict:
         if row["kind"] == "company" and _interleaved_org(row["value"]):
             continue
         if row["kind"] == "person_free":
-            # "First Last" anywhere in PDF text, first name from the list: project-local only
-            if row.get("repos", 0) > 3:
+            # "First Last" anywhere in PDF text, first name from the list: project-local only.
+            # Off by default (no GT recall gain, some company names): DEID_FREE_NAMES=1 enables it.
+            if row.get("repos", 0) > 3 or not os.environ.get("DEID_FREE_NAMES"):
                 continue
             row = dict(row, kind="person")
         if row["kind"] == "person_init":
