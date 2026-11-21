@@ -107,6 +107,10 @@ zchng arduino january february march april may june july august september octobe
 jan feb mar apr jun jul aug sep sept oct nov dec monday tuesday wednesday thursday friday russia canada
 london china germany france italy spain japan usa india europe kazan glencoe workshop prototype bearing
 bracket housing cover plate shaft gear motor mount holder washer bushing nozzle sensor frame
+numbe breadboard gesamtzeichng boden elemente element preamp stepper arbeit auftrag micro asembly benchtop
+kontextmenu bohrung gewinden gewinde skizze volumen skizzenmodus carraige carriage codice rugosità massa ptype
+sistem weldment gearmotor gripper changer goniometer piezo stanzwerkzeug lehrprodukt magnetiic sistema
+galvomount bundplade dynamixel nikon mitutoyo thorlabs american scottish kelvin ergocub
 projekt anhang zeichen skizzen bohrungen walze öffnen animationen kontrolliert geprüft gezeichnet
 änderungen änderung stückliste gesamtmasse volumenmodelle baugruppen explosionszeichnungen allgemeintoleranz
 """.split())
@@ -129,6 +133,14 @@ def _common_words() -> set:
             except OSError:
                 continue
     return _COMMON
+
+
+def near_word_ok(w: str) -> bool:
+    lw = w.lower()
+    if lw in TECH_STOP or lw in STOPWORDS or (GERMAN_SUFFIX.search(lw) and len(lw) > 7):
+        return False
+    stems = {lw, lw.rstrip("s"), re.sub(r"(ed|ing|ly|es|er)$", "", lw), re.sub(r"(d|ing)$", "", lw)}
+    return not any(x in _common_words() for x in stems)
 
 
 def _near_label_names(text: str) -> list[tuple[str, str]]:

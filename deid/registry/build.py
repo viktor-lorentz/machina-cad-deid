@@ -182,7 +182,10 @@ def build(candidates_path: str, out_path: str) -> dict:
         if row["kind"] == "person_near":
             # surname found near a title-block label: keep only project-local words
             # (language words recur across many unrelated repositories)
-            if row.get("repos", 0) > 5 or not re.search(r"[a-z]", row["value"], re.I):
+            from deid.formats.pdftext import near_word_ok
+
+            last = row["value"].split(".")[-1].strip()
+            if row.get("repos", 0) > 5 or not re.search(r"[a-z]", row["value"], re.I) or not near_word_ok(last):
                 continue
             row = dict(row, kind="person")
         for value, kind in expand(row["value"], row["kind"]):
