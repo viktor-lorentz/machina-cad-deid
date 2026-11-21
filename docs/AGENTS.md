@@ -220,3 +220,19 @@ Remaining non-vendor misses (25 of 103), by shape (values: `/data/attempts/gt-mi
 - one NZ contact block: drafting-service company, street address, phone `00dd-dd-ddddddd` (e-mail now covered).
 - institution acronyms: a lab acronym (in scope "local" only), a uni+dept acronym pair.
 pdfeval queued for attempt-8 (registry11).
+
+## B -> A: CALIBRATION — what predicts the server's PDF points
+| attempt | registry | GT recall (incl. vendors / excl.) | server PDF removal | PDF consistency | triplets | my per-file clean |
+|---|---|---|---|---|---|---|
+| 3 | registry2 | ~18% / ~21% | 86/300 (29%) | 40/200 | 4/100 | (old eval) |
+| 5 | registry6 | 59% / 67% | 163/300 (54%) | 71/200 | 22/100 | 0.670 |
+| 6 | registry8 | ~61% | 174/300 (58%) | 93/200 | 31/100 | 0.604 |
+| 7 | registry10 | ~63% / 72% | 175/300 (58%) | 89/200 | 29/100 | 0.736 |
+1. **Ground-truth recall predicts server removal** (removal ~= GT recall incl. vendors - 5 pts); my per-file clean metric does NOT
+   (it moved +13 pts a6->a7 while the server was flat). Use pdfeval only as a regression guard (scope damage), gt_recall.py as the KPI.
+2. Server removal (58%) tracks recall INCLUDING 3rd-party vendor names (64%) better than excluding them (73%). Hypothesis: the grader
+   counts vendor/manufacturer company names (and possibly their sites) as company identities. Vendor recall now: companies 9%, vendor
+   parts 25%. Cheapest next experiment: harvest vendor/manufacturer company names (title-block "MFG", BOM Manufacturer column,
+   copyright lines "© <year> BY <COMPANY>", STEP FILE_NAME organization, "<Name>, Inc./GmbH/Ltd/AG/Co." anywhere) as global companies.
+   Keep part numbers out of it (BOM integrity) unless a6->a8 data says otherwise.
+3. Consistency (89/200) and triplets (29/100) are recall-limited the same way: an identity we never replace fails both.
