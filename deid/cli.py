@@ -40,7 +40,21 @@ def main(argv: list[str] | None = None) -> None:
     c.add_argument("-n", type=int, default=3000)
     c.add_argument("-j", "--workers", type=int, default=None)
 
+    rd = sub.add_parser("readme", help="write README.txt for an attempt")
+    rd.add_argument("--attempt", required=True)
+    rd.add_argument("--results", required=True)
+    rd.add_argument("--registry", default="registry/registry.json")
+    rd.add_argument("--flags", default="")
+    rd.add_argument("-o", "--out", required=True)
+
     a = ap.parse_args(argv)
+    if a.cmd == "readme":
+        import platform
+
+        from deid import readme
+
+        readme.write(a.attempt, a.results, a.registry, a.out, a.flags, platform.python_version())
+        return
     secret = os.environ.get("DEID_SECRET", "machina-deid-default-secret").encode()
     if a.cmd == "harvest":
         from deid import harvest

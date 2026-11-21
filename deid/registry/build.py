@@ -46,12 +46,15 @@ VENDOR = re.compile(r"kicad|stepup|ksu mcad|zwcad|step tools|steptools|3ds\.com|
                     r"fontawesome|openstreetmap|osm\.org|naturalearth|protomaps|pdf-tools|aiim\.org|iec\.ch|"
                     r"solidworks|autodesk|dassault|siemens|ptc\.com|spatial|adobe|microsoft|freecad|onshape|"
                     r"opencascade|ugs|parasolid|acis|inventor|catia|creo|zwsoft|gstarcad|bricscad|draftsight|"
-                    r"ghostscript|libreoffice|openoffice|inkscape|blender|sketchup|rhino|prusa|bambu|cura", re.I)
+                    r"ghostscript|libreoffice|openoffice|inkscape|blender|sketchup|rhino|prusa|bambu|cura|^ns\.|useplus|color\.org|"
+                    r"iptc\.org|npes\.org|gimp\.org|ilovepdf|hsmworks|episerver|w3\.org|adobe\.com|purl\.org|"
+                    r"^(?:first|last|full|user|company|organi[sz]ation|author|designer) ?name$|^no ?name$|^a company$|"
+                    r"^unknown|terraform|^ip[\d.]+$|^[0-9a-f]{20,}$|firma gmbh|^your |^my ", re.I)
 
 
 def clean(v: str) -> str:
     v = v.replace("\x00", "")
-    v = "".join(ch for ch in v if ch.isprintable())
+    v = "".join(ch for ch in v if ch.isprintable() and ch != "\ufffd")
     return v.strip("﻿￾\xfe\xff \t")
 
 
@@ -111,7 +114,11 @@ def build(candidates_path: str, out_path: str) -> dict:
             if PLACEHOLDER.search(v) or VENDOR.search(v):
                 continue
             if kind == "email":
-                if "@" not in v or not valid_host(v.rsplit("@", 1)[1]) or not re.search(r"[A-Za-z]", v.split("@")[0]):
+                if "@" not in v:
+                    continue
+                loc, dom = v.rsplit("@", 1)
+                if (not valid_host(dom) or dom != dom.lower() or len(dom.split(".")[-2]) < 3
+                        or len(loc) < 2 or not re.search(r"[A-Za-z]", loc)):
                     continue
             if kind == "domain" and not valid_host(v):
                 continue
