@@ -33,8 +33,8 @@ EMAIL = re.compile(rb"[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]
 URLHOST = re.compile(rb"(?i)\b(?:https?|ftp)://([A-Za-z0-9.-]{3,253})")
 WINUSER = re.compile(rb"(?i)[A-Z]:[\\/]{1,2}(?:Users|Documents and Settings)[\\/]{1,2}([^\\/\"'<>|:*?\x00\r\n]{1,64})")
 UNIXUSER = re.compile(rb"/(?:home|Users)/([A-Za-z0-9._-]{2,64})")
-DOMUSER = re.compile(rb"(?<![A-Za-z0-9\\])([A-Z][A-Z0-9-]{1,15})\\([A-Za-z][A-Za-z0-9._-]{1,30})(?![A-Za-z0-9\\])")
-PHONE = re.compile(rb"(?<![\d.])(?:\+\d{1,3}[ .-])?\(?\d{3}\)?[ .-]\d{3}[ .-]\d{4}(?![\d.])")
+DOMUSER = re.compile(rb"(?<![A-Za-z0-9\\])([A-Z][A-Z0-9-]{2,15})\\([A-Za-z][A-Za-z0-9._-]{2,30})(?![A-Za-z0-9\\])")
+PHONE = re.compile(rb"(?<![\d.])(?:\+\d{1,3}[ .-]?)?(?:\(\d{3}\) ?|\d{3}[.-])\d{3}[.-]\d{4}(?![\d.])")
 
 # Hosts, users and values that never identify anyone.
 ALLOW_HOSTS = {
@@ -46,6 +46,14 @@ ALLOW_HOSTS = {
 }
 ALLOW_USERS = {"public", "default", "shared", "all users", "administrator", "admin", "user", "username", "guest",
                "runner", "root", "build", "travis", "appveyor", "vagrant", "ubuntu", "docker"}
+GENERIC = {"admin", "administrator", "user", "users", "owner", "sysadmin", "windows", "microsoft", "solidworks",
+           "open", "cascade", "opencascade", "autodesk", "ptc", "siemens", "dassault", "systemes", "unknown",
+           "organisation", "organization", "company", "author", "default", "guest", "pc", "desktop", "laptop"}
+PUBLIC_HOSTS = ("wikipedia.org", "microsoft.com", "adobe.com", "autodesk.com", "solidworks.com", "ptc.com", "iec.ch",
+                "iso.org", "github.com", "google.com", "youtube.com", "digicert.com", "verisign.com", "globalsign.com",
+                "symantec.com", "netfabb.com", "openscad.org", "freecad.org", "freecadweb.org", "kicad.org",
+                "onshape.com", "mcmaster.com", "thingiverse.com", "grabcad.com", "apple.com", "mozilla.org",
+                "w3.org", "adobe.io", "python.org", "sourceforge.net", "ietf.org", "unicode.org", "openxmlformats.org")
 PLACEHOLDERS = {"", "unknown", "none", "n/a", "na", "null", "author", "user", "owner", "anonymous", "organization",
                 "organisation", "company", "-", "?", "undefined", "default", "unspecified", "not specified"}
 
@@ -62,10 +70,10 @@ class Explainer:
 
     def explained(self, value: str) -> bool:
         v = value.strip().lower()
-        if v in PLACEHOLDERS or v in self.pseudo:
+        if v in PLACEHOLDERS or v in self.pseudo or not re.search(r"[a-z]", v):
             return True
         toks = [t for t in _TOK.findall(v) if not t.isdigit()]
-        return bool(toks) and all(t in self.tokens for t in toks)
+        return all(t in self.tokens or t in GENERIC for t in toks)
 
 
 def _dec(b: bytes) -> str:
@@ -74,7 +82,10 @@ def _dec(b: bytes) -> str:
 
 def scan_patterns(data: bytes, ex: Explainer, out: Counter, samples: dict) -> None:
     """Pattern detectors over raw bytes, plus a UTF-16LE view when the data has many NULs."""
-    views = [data]
+    sample = data[:65536]
+    binary = sum(b < 9 or 13 < b < 32 or b == 127 for b in sample) > len(sample) // 20
+    # in binary data, only look inside printable runs (like `strings`), never across random bytes
+    views = [b"\n".join(re.findall(rb"[\x20-\x7e]{8,}", data))] if binary else [data]
     if data.count(b"\x00") > len(data) // 8:
         try:
             views.append(data.decode("utf-16-le", "ignore").encode("utf-8", "ignore"))
@@ -84,12 +95,14 @@ def scan_patterns(data: bytes, ex: Explainer, out: Counter, samples: dict) -> No
         for m in EMAIL.finditer(v):
             s = _dec(m.group(0))
             host = s.rsplit("@", 1)[1].lower()
-            if host in ALLOW_HOSTS or ex.explained(s):
+            tld = host.rsplit(".", 1)[-1]
+            if host in ALLOW_HOSTS or ex.explained(s) or not (tld.islower() or tld in ("com", "org", "net", "edu")) \
+                    or min(len(x) for x in host.split(".")) < 2:
                 continue
             _hit(out, samples, "email", s)
         for m in URLHOST.finditer(v):
             h = _dec(m.group(1)).lower().rstrip(".")
-            if h in ALLOW_HOSTS or h.endswith(".w3.org") or ex.explained(h):
+            if h in ALLOW_HOSTS or any(h == p or h.endswith("." + p) for p in PUBLIC_HOSTS) or ex.explained(h):
                 continue
             _hit(out, samples, "url-host", h)
         for rx, kind in ((WINUSER, "path-user"), (UNIXUSER, "path-user")):
@@ -144,7 +157,7 @@ def scan_fields(data: bytes, ext: str, ex: Explainer, out: Counter, samples: dic
                     _field(out, samples, ex, "step-person", _dec(s))
         for m in STEP_ORG.finditer(data):
             _field(out, samples, ex, "step-org", _dec(m.group(2)))
-    if ext in ("igs", "iges") or (len(data) > 80 and data[72:73] == b"S"):
+    if ext in ("igs", "iges") or re.match(rb"S[ 0-9]{7}\r?\n", data[72:82]):
         _iges_global(data, ex, out, samples)
     for m in XML_PROP.finditer(data):
         _field(out, samples, ex, "fcstd-" + _dec(m.group(1)), _dec(m.group(2)))
@@ -198,6 +211,8 @@ def scan_ole_meta(data: bytes, ex: Explainer, out: Counter, samples: dict) -> li
         md = o.get_metadata()
         for attr in ("author", "last_saved_by", "company", "manager"):
             v = getattr(md, attr, None)
+            if isinstance(v, bytes):
+                v = v.split(b"\x00", 1)[0]
             if v:
                 _field(out, samples, ex, "ole-" + attr, v.decode("latin-1", "replace") if isinstance(v, bytes) else str(v))
         for path in o.listdir(streams=True, storages=False):
