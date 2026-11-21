@@ -215,6 +215,7 @@ GENSTEM = re.compile(r"(?i)^(?:open cascade.*|untitled.*|unnamed.*|part\d*|assem
 
 
 def stem_of(name):
+    name = re.sub(r"\s+", " ", name.replace("\\\\", "\\"))
     b = re.split(r"[\\/]", name.strip())[-1]
     b = re.sub(r"(?i)(?:\.(?:prt|asm|sldprt|sldasm|ipt|iam|par|catpart|catproduct|x_t|sat|stp|step|igs|iges|hh))+$", "", b).strip()
     return b
@@ -238,6 +239,10 @@ def scan_header(path):
             s = stem_of(m.group(1))
             if stemish(s):
                 out.append(s)
+            else:
+                t0 = s.split(" ")[0]
+                if " " in s and re.fullmatch(r"(?=.*\d)(?=.*[A-Za-z]{2})[A-Za-z0-9]{4,12}", t0) and not re.fullmatch(r"(?i)[mM]\d+|\d+mm|v\d+|rev\d+", t0):
+                    out.append(t0)
     return out
 
 
