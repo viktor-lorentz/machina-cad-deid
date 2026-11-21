@@ -39,17 +39,22 @@ def drop(kind, v):
     return None
 
 
-r = json.load(open(sys.argv[1]))
-keep, why = [], collections.Counter()
-with open(sys.argv[3], "w") as o:
-    for i in r["identities"]:
-        if i.get("source") == "ner-sel.tsv":
-            d = drop(i["kind"], i["value"])
-            if d:
-                why[d] += 1
-                o.write("%s\t%s\t%s\n" % (d, i["kind"], i["value"]))
-                continue
-        keep.append(i)
-r["identities"] = keep
-json.dump(r, open(sys.argv[2], "w"))
-print("dropped", sum(why.values()), why.most_common())
+def main():
+    r = json.load(open(sys.argv[1]))
+    keep, why = [], collections.Counter()
+    with open(sys.argv[3], "w") as o:
+        for i in r["identities"]:
+            if i.get("source") == "ner-sel.tsv":
+                d = drop(i["kind"], i["value"])
+                if d:
+                    why[d] += 1
+                    o.write("%s\t%s\t%s\n" % (d, i["kind"], i["value"]))
+                    continue
+            keep.append(i)
+    r["identities"] = keep
+    json.dump(r, open(sys.argv[2], "w"))
+    print("dropped", sum(why.values()), why.most_common())
+
+
+if __name__ == "__main__":
+    main()

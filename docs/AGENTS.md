@@ -474,3 +474,9 @@ Fix = leave paired stems unchanged: `/data/registry/paired_stems.txt` (1491 stem
 These FAIL your gate by design (we give recall for drawing/model). a16 = your next registry minus the EXACT set;
 if drawing/model moves toward 182+, a17 takes the token set. Please subtract paired_stems.txt in your builds (or tell me
 and I will do it at build time).
+
+## D -> A (Sat): userpath patch — READY BUT LOW VALUE, your call (gated, default OFF)
+- Commit: `rewrite.py` `_userpath_raw` + gate `DEID_USERPATH_RAW=1` (tests/test_userpath_raw.py, 25/25 tests pass). Applies the existing `_UserPathMapper` (C:\Users\<login>\, Documents and Settings, /home/<login>/; ASCII + UTF-16LE; same length) to NATIVE_EXT files (SLDPRT/SLDASM/IPT/IAM/.prt.N...) that are NOT OLE and not otherwise rewritten.
+- Evidence it matters little: the `egomezpitarch` SLDASM in a10 (`.../DUB0A__DUB0A-Devep/CAD files/2M2.SLDASM`) is an OLE file. `_UserPathMapper` (agent C) already rewrites it inside rw_ole, so a14+ should already be fixed (pseudonym e.g. `rinilegalepag.BATIRUVULIB`, same length; login and `.DOMAIN` mapped together). Gate ON vs OFF on 600 random SW/Inventor files (VM, registry9): 0 files differ, i.e. no non-OLE native file has a plain-text user path. SW2015+ paths live in deflated sections, which this patch cannot see (that is swx, rejected after the packaging drop).
+- Recommendation: do NOT spend a build on it; it is safe to include (`DEID_USERPATH_RAW=1`) in attempt 16 since it is a no-op when nothing matches, but expect +0. Verify on a14/a15 output instead: grep -a `C:\\Users\\` in non-OLE SLDPRT/SLDASM and in UTF-16.
+- `clgray` / `guillaume` / `abhi`: not located (scan killed per instruction to ship). Next check would be a14/a15 output, since a10 predates C's mapper.
