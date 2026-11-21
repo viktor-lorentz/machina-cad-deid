@@ -115,9 +115,10 @@ class Mapper:
         if enc not in self._auto:
             A = ahocorasick.Automaton(ahocorasick.STORE_ANY, ahocorasick.KEY_STRING)
             n = 0
+            codec = "utf-8" if enc == "ascii" else enc  # ASCII pass also matches UTF-8 accented names
             for key in self.entries:
                 try:
-                    kb = key.encode(enc)
+                    kb = key.encode(codec)
                 except UnicodeEncodeError:
                     continue
                 A.add_word(kb.decode("latin-1"), (len(kb), key))
@@ -163,8 +164,12 @@ class Mapper:
             for s, e, key in hits:
                 if accept is not None and not accept(src, s, e):
                     continue
-                occ = src[s:e].decode(enc, "replace")
-                rep = self.pseudonym(occ).encode(enc, "replace")
+                codec = "utf-8" if enc == "ascii" else enc
+                try:
+                    occ = src[s:e].decode(codec)
+                    rep = self.pseudonym(occ).encode(codec)
+                except (UnicodeError, KeyError):
+                    continue
                 if len(rep) == e - s:
                     buf[s:e] = rep
         return bytes(buf) if buf is not None else data

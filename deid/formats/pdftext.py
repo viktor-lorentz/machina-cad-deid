@@ -161,26 +161,37 @@ def rewrite(data: bytes, mapper) -> bytes:
         text = page.get_text()
         if not text.strip():
             continue
-        hits = mapper.find(text.encode("utf-8", "replace"), "ascii")
+        raw = text.encode("utf-8", "replace")
+        hits = mapper.find(raw, "ascii")
         if not hits:
             continue
-        raw = text.encode("utf-8", "replace")
+        placements = []
         seen = set()
         for s, e, key in hits:
-            occ = raw[s:e].decode("utf-8", "replace")
+            try:
+                occ = raw[s:e].decode("utf-8")
+                rep = mapper.pseudonym(occ)
+            except (UnicodeError, KeyError):
+                continue
             if occ in seen:
                 continue
             seen.add(occ)
-            rep = mapper.pseudonym(occ)
-            for quad in page.search_for(occ, quads=False):
-                size = _font_size_at(page, quad) or max(4.0, quad.height * 0.8)
-                page.add_redact_annot(quad, text=rep, fontname="helv", fontsize=size * 0.92,
-                                      fill=None, text_color=(0, 0, 0), cross_out=False)
-                changed = True
-        if changed:
-            page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE,
-                                  graphics=getattr(fitz, "PDF_REDACT_LINE_ART_NONE", 0),
-                                  text=getattr(fitz, "PDF_REDACT_TEXT_REMOVE", 0))
+            for rect in page.search_for(occ):
+                size = _font_size_at(page, rect) or max(4.0, rect.height * 0.8)
+                placements.append((rect, rep, size))
+                page.add_redact_annot(rect, fill=None, cross_out=False)
+        if not placements:
+            continue
+        page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE,
+                              graphics=getattr(fitz, "PDF_REDACT_LINE_ART_NONE", 0),
+                              text=getattr(fitz, "PDF_REDACT_TEXT_REMOVE", 0))
+        for rect, rep, size in placements:
+            # one line, shrunk to the original width, on the original baseline area
+            w1 = fitz.get_text_length(rep, fontname="helv", fontsize=1) or 1
+            fs = max(2.0, min(size, rect.width / w1 * 0.98))
+            page.insert_text((rect.x0, rect.y1 - (rect.height - fs) / 2 - fs * 0.2), rep,
+                             fontname="helv", fontsize=fs, color=(0, 0, 0), overlay=True)
+        changed = True
     if not changed:
         return data
     out = doc.tobytes(garbage=0, deflate=True)
