@@ -82,3 +82,10 @@ Gaps (max-ours): PDF removal 214, PDF consistency 160, non-collision 96, drawing
   Rotorcraft -> not shipped.
 - code/ quoted corpus strings (tests, IDEAS, docs/AGENTS.md). Now dropped from code/; source stays exact.
 - attempt 10 = registry10 (a7) + swx off + restricted propagation + clean code/: tests packaging 2 -> >=5.
+
+## Sat 14:20 ET — KPI = PDF recall r (user): PDF pts ~ 300r + 200r^2 + 100r^3. Leader ~852, #2 698, we 562 (13th).
+- Every attempt from now: highest-gt_recall registry that keeps pdfeval scope not worse. Always keep next attempt building.
+- registry13 (family codes FD-JL-*, 30DOSTE, PPSTE, MS-*, HUNSLET-45-*): GT 64% -> 67%, parts 76 -> 87%. = attempt 11.
+- harvest14 adds addresses / 00-intl phones / DRAUGHTING-ENGINEERING firms / Advanced LIGO.
+- rewrite coverage: only ~1% of PDFs with registry hits stay unreduced (6/467), 7% partial -> registry recall is the lever.
+- Last submit by 5:00 AM PT Sunday (grading up to 3 h).
