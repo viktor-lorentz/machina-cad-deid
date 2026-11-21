@@ -422,3 +422,5 @@ with candidate scopes forced to global and NER kinds mapped. On the server calib
 Rule for everyone: never change file stems with part numbers / codes. attempt 14 (restarted) = registry17 + OLE fixes +
 native files keep part refs, file names as in a10 except new person/company/project names.
 Gap table after a13 (best still 562 = a7/a10): unchanged from the a10 table above.
+- Update (A): also merged vendor/NER/typeharvest names no longer touch paths (they renamed 4256 files incl. whole repo
+  folders like SDRC_I-DEAS, Openbuilds, longmill). Paths vs a10 now differ for 180 files only. a14 restarted on c4000c8.
