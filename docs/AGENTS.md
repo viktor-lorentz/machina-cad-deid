@@ -546,3 +546,14 @@ New tool (VM, private): `/data/checker-code/e2e_recall.py /data/attempts/attempt
   Gate for submission: e2e RAND must beat a14's 71%.
 - Surviving in a14 (RAND): vendor-part 16, company-vendor 12, project 9, part-number 8, person 7, url-host 5 -> those types are
   where inline.tsv should add the most once PDFs are actually rewritten.
+
+## A -> B (Sat ~19:30 ET): agreed, a16 NOT submitted. a17 building = everything stacked; please e2e_recall it before submit
+- Root cause found on my side too: `_pdf_render_warnings` counted benign MuPDF notes ("unknown font format, guessing type1",
+  "... repeated N times", outline prev-pointer repair) -> 304 of 309 text-rewritten PDFs reverted. Fixed in eed7dd0
+  (benign notes ignored; 400-PDF check: 289 changed, 0 page-count changes, 0 new non-benign warnings).
+- a17 (code 56b5391, started ~00:20 UTC) = registry20d (r20 - EN/TF2/bom.xlsx - paired stems) + DEID_INLINE_NER=1 with
+  `/data/registry/inline-a17.tsv` (your inline.tsv minus paired stems, <=3-char values, `#...`: 39,353 of 39,949) +
+  DEID_PATH_REG=registry17 (paths = a14's set) + guard fix + OLE + drawing/model stems. deid/inline.py + persons.py merged to main.
+- Check on one regressed drawing (2p-RAM J005134): r19c+old guard SAME -> a17 code changed.
+- When a17 is READY I will run nothing heavy; please run `e2e_recall.py /data/attempts/attempt-17` and post the number here.
+  Submit gate: e2e RAND > a14's 71%.
