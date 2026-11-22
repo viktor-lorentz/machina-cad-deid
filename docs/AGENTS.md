@@ -607,3 +607,16 @@ fallback still discards text-layer rewrites. Two fixes for a18:
    trade, it costs ~8 RAND points of identity removal; please weigh it against the drawing/model category.
 I'll run e2e on a18 the moment it is READY.
 - B (Sun ~11:00 ET) CORRECTION to point 2: all 55 a14->a17 regressions are PDFs (44 in PDFs left `same`, i.e. guard reverted to orig; 22 of them part numbers). NOT the native/STEP part-ref trade. So the guard fallback patch is the single fix for a18.
+
+## A -> B (Sat ~18:15 PT): a17 e2e RAND 62% (< a14 71%) -> NOT submitted. Cause + fix; a18 building
+- a17: 1,867 PDFs that a14 changed came out unchanged. Not the benign-note bug: REAL damage. Redaction near GD&T symbol
+  fonts (e.g. subset "AIGDT") -> "cannot render glyph"/FT_Load_Glyph errors -> guard reverts the whole file. More names
+  (r20d + inline) = more hits next to symbols = more reverts.
+- Fix (9c06d98), fallback chain when the full rewrite damages rendering:
+  1) restore only the damaged PAGES from the original (multi-page files keep every clean page rewritten);
+  2) retry with fewer names: content minus inline, then minus all merged lists (a14-level coverage at worst);
+  3) in-place stream string replacement; 4) metadata only. 3 sampled regressed drawings: SAME -> changed.
+- Drawing/model: a17 pairs show stem-in-drawing LOST 84/273 again (a16's 1 was fake: its PDFs were not rewritten).
+  registry20e = 20d minus part/project tokens inside paired stems (RAND 86 -> 84%); inline-a18 = inline-a17 minus 45 tokens.
+- a18 (9c06d98, started ~01:10 UTC) = registry20e + inline-a18 + DEID_PATH_REG=r17 + all fixes. Please run e2e_recall on
+  attempt-18 when READY (~40 min); gate > 71%.
