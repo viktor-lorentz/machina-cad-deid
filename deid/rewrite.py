@@ -573,10 +573,17 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
             out = rw_pdf(data, m)
         except Exception:
             out = rw_pdf(data, m, streams=False)
-        if out != orig and _pdf_render_warnings(out) > _pdf_render_warnings(orig):
-            # something we touched no longer renders cleanly: keep the safest variant
-            safe = rw_pdf(orig, m, streams=False)
-            return safe if _pdf_render_warnings(safe) <= _pdf_render_warnings(orig) else orig
+        if out != orig and _pdf_render_warnings(out) > (w0 := _pdf_render_warnings(orig)):
+            # something we touched no longer renders cleanly (redaction re-subsets fonts: symbol glyphs lost):
+            # next best = in-place string replacement in content streams + objects, original fonts kept
+            for streams in (True, False):
+                try:
+                    alt = rw_pdf(orig, m, streams=streams)
+                except Exception:
+                    continue
+                if alt != orig and _pdf_render_warnings(alt) <= w0:
+                    return alt
+            return orig
         return out
     if head.startswith(b"PK\x03\x04") and (e in ZIP_EXT) and depth < 4:
         if e in ARCHIVE_EXT and not G.get("archives", False):
