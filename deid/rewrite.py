@@ -239,6 +239,41 @@ def _pdf_render_warnings(data: bytes, max_pages: int = 4) -> int:
     return sum(1 for ln in (w.splitlines() if w else []) if not _BENIGN_WARN.search(ln))
 
 
+def _page_warnings(doc, i: int) -> int:
+    import fitz
+
+    fitz.TOOLS.reset_mupdf_warnings()
+    try:
+        p = doc[i]
+        p.get_text()
+        p.get_pixmap(dpi=12)
+    except Exception:
+        return 10**6
+    w = fitz.TOOLS.mupdf_warnings()
+    return sum(1 for ln in (w.splitlines() if w else []) if not _BENIGN_WARN.search(ln))
+
+
+def _pdf_restore_damaged_pages(orig: bytes, out: bytes) -> bytes | None:
+    """Pages of `out` that render worse than in `orig` are replaced by the original page (same index)."""
+    import fitz
+
+    fitz.TOOLS.mupdf_display_errors(False)
+    do = fitz.open(stream=orig, filetype="pdf")
+    dn = fitz.open(stream=out, filetype="pdf")
+    if do.page_count != dn.page_count:
+        return None
+    bad = [i for i in range(dn.page_count) if _page_warnings(dn, i) > _page_warnings(do, i)]
+    if not bad or len(bad) == dn.page_count:
+        return None
+    for i in bad:
+        dn.delete_page(i)
+        dn.insert_pdf(do, from_page=i, to_page=i, start_at=i)
+    res = dn.tobytes(garbage=0, deflate=True)
+    if fitz.open(stream=res, filetype="pdf").page_count != do.page_count:
+        return None
+    return res
+
+
 _BENIGN_WARN = re.compile(r"unknown font format|repeated \d+ times|prev pointer in outline|outline tree|"
                           r"marked content and clip nesting|^\.\.\.")
 
@@ -574,8 +609,15 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
         except Exception:
             out = rw_pdf(data, m, streams=False)
         if out != orig and _pdf_render_warnings(out) > (w0 := _pdf_render_warnings(orig)):
-            # something we touched no longer renders cleanly (redaction re-subsets fonts: symbol glyphs lost):
-            # next best = in-place string replacement in content streams + objects, original fonts kept
+            # something we touched no longer renders cleanly (redaction re-subsets fonts: symbol glyphs lost).
+            # 1) keep every rewritten page that still renders cleanly; restore only the damaged pages
+            try:
+                merged = _pdf_restore_damaged_pages(orig, out)
+                if merged is not None and _pdf_render_warnings(merged) <= w0:
+                    return merged
+            except Exception:
+                pass
+            # 2) in-place string replacement in content streams + objects (original fonts), 3) metadata only
             for streams in (True, False):
                 try:
                     alt = rw_pdf(orig, m, streams=streams)
