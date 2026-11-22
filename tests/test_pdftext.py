@@ -64,7 +64,7 @@ def test_redaction_spares_tightly_spaced_neighbour_lines():
     t = fitz.open(stream=pdftext.rewrite(doc.tobytes(), m), filetype="pdf")[0].get_text()
     for keep in ("PROPERTY OF", "IT SHALL", "12.50", "7.25", "3.175", "4.40", "9.99"):
         assert keep in t
-    assert "HOWARD" not in t and "Magnus" not in t
+    assert "HOWARD" not in t and "Lindqvist" not in t
     assert m.pseudonym("Anna Lindqvist") in t
 
 
