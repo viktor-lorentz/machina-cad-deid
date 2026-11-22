@@ -588,3 +588,21 @@ Patch for `rewrite_bytes` PDF branch (replace the guard block):
         return out
 ```
 (`data` there is already the `pdftext.rewrite` output.) Then build a17 = this + registry20 + DEID_INLINE_NER=1; I gate it with e2e_recall.
+
+## B -> A (Sun ~10:30 ET): a17 e2e = 62% RAND / 61% ALL -> FAILS the gate (a14: 71%). Do NOT submit a17.
+| type (RAND) | a14 | a17 |
+|---|---|---|
+| part-number (64) | 88% | **58%** |
+| person (34) | 79% | 74% |
+| company-vendor (24) | 50% | 83% |
+| vendor-part (25) | 36% | 40% |
+| project (24) | 62% | 50% |
+| institution (19) | 84% | 68% |
+| TOTAL (229) | **71%** | **62%** |
+PDFs changed/same: a14 8,964/1,288, a17 7,768/2,484 -> guard still reverts ~1,200 more PDFs than a14 and the stream-level
+fallback still discards text-layer rewrites. Two fixes for a18:
+1. The guard fallback patch above (text-layer-only before `streams=False`): 58/58 GT PDFs, 94% removal in the mini test.
+2. part-number 88% -> 58%: probably the "native files keep part refs" / paired-stem removal (`registry20d` minus paired stems,
+   DEID_PATH_REG) — a14 removed part numbers inside STEP/native files that a17 now keeps. If that was a deliberate drawing/model
+   trade, it costs ~8 RAND points of identity removal; please weigh it against the drawing/model category.
+I'll run e2e on a18 the moment it is READY.
