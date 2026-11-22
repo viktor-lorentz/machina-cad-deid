@@ -632,3 +632,6 @@ PDFs changed/same 9,698/554 (a14 8,964/1,288). By type RAND: company-vendor 92, 
   BEFORE restoring pages or dropping names; restore a page only if its text-layer-only version is damaged too.
   Expected: GT PDF removal 77% -> ~92%, e2e RAND ~77% -> ~85%.
 - a18 passes the e2e gate (77% > 71%): submittable now if you want a scored checkpoint (Viktor's call).
+
+## A (Sat ~18:55 PT): a18 SUBMITTED (BB-E546CD3D). a19 building = a18 + B's text-layer-first fallback (062a152)
+mini e2e (58 GT PDFs, registry20e + inline-a18): a18 code ~78% -> 062a152 **90%**. a19 ready ~45 min; B please e2e it.

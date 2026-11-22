@@ -13,3 +13,6 @@ ebde0e6	985	yes: attempt-2 receipt BB-62DF6234 (Sat 02:13 ET)	266	attempt-2: + p
 13	9b425d0	BB-90430234	512	registry15 (r14: family codes, addresses, phones, firms + vendor-all + project variants; RAND 75% old sample) + drawing/model: native files keep part refs (66->1/600), part stems renamed like drawing text (LOST 197->81), multi-line STEP strings; local 974
 14	c4000c8	BB-DE9A89BE	609	registry17 (r16 + cleaned NER; RAND 66%) + OLE free-sector scrub + all saved accounts pseudonymised + native part refs kept; part-stem renames reverted; merged names content-only (paths = a10 +180); local 750 (artifact: junk #110 entry)
 15	9546ce3	BB-445D755C	309	CALIBRATION: registry19c (B r19 minus junk; GT RAND 85% / ALL 82%) + a14 code; paths pinned to r17 (DEID_PATH_REG); scans skipped (OOM)
+16	4ebe828	-	skipped	registry20d + paired stems; PDF guard regression (e2e 14%) -> not submitted
+17	56b5391	-	skipped	guard fix + registry20d + inline; glyph-damage reverts (e2e 62% < 71%) -> not submitted
+18	9c06d98	BB-E546CD3D	pending	registry20e (r20 - junk - paired-stem tokens) + inline-a18 + PDF fallback chain (page restore, fewer names, streams, metadata); e2e RAND 77% / ALL 75%; 9698/10342 PDFs changed; stem LOST 34/279
