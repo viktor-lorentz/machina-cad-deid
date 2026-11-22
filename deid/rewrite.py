@@ -229,7 +229,13 @@ def _pdf_render_warnings(data: bytes, max_pages: int = 4) -> int:
     except Exception:
         return 10**6
     w = fitz.TOOLS.mupdf_warnings()
-    return len(w.splitlines()) if w else 0
+    # benign notes MuPDF prints for any re-saved PDF (font-type guess for re-subset fonts, outline repair,
+    # repeat counters, marked-content nesting): they are not damage. Counting them reverted ~98% of text rewrites.
+    return sum(1 for ln in (w.splitlines() if w else []) if not _BENIGN_WARN.search(ln))
+
+
+_BENIGN_WARN = re.compile(r"unknown font format|repeated \d+ times|prev pointer in outline|outline tree|"
+                          r"marked content and clip nesting|^\.\.\.")
 
 
 def rw_pdf(data: bytes, m: Mapper, streams: bool = True) -> bytes:
