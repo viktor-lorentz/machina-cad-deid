@@ -239,6 +239,25 @@ def _pdf_render_warnings(data: bytes, max_pages: int = 4) -> int:
     return sum(1 for ln in (w.splitlines() if w else []) if not _BENIGN_WARN.search(ln))
 
 
+def _reduced_mappers(m: Mapper) -> list:
+    """Cached sub-mappers of the content mapper: without inline detections; without any merged list."""
+    if m is not G.get("content"):
+        return []
+    if "_reduced" not in G:
+        merged = getattr(m, "merged", set())
+        subs = []
+        for drop in (lambda k: m.kinds.get(k) == "inline", lambda k: k in merged):
+            sub = Mapper(secret=m.secret)
+            for k, v in m.entries.items():
+                if not drop(k):
+                    sub.entries[k] = v
+                    sub.kinds[k] = m.kinds.get(k)
+            if 0 < len(sub.entries) < len(m.entries) and all(len(sub.entries) != len(x.entries) for x in subs):
+                subs.append(sub)
+        G["_reduced"] = subs
+    return G["_reduced"]
+
+
 def _page_warnings(doc, i: int) -> int:
     import fitz
 
@@ -617,7 +636,16 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
                     return merged
             except Exception:
                 pass
-            # 2) in-place string replacement in content streams + objects (original fonts), 3) metadata only
+            # 2) the same rewrite with fewer names (without inline detections, then without merged lists):
+            #    the damage usually comes from one extra hit next to symbol glyphs
+            for sub in _reduced_mappers(m):
+                try:
+                    alt = rw_pdf(pdftext.rewrite(orig, sub), sub)
+                except Exception:
+                    continue
+                if alt != orig and _pdf_render_warnings(alt) <= w0:
+                    return alt
+            # 3) in-place string replacement in content streams + objects (original fonts), 4) metadata only
             for streams in (True, False):
                 try:
                     alt = rw_pdf(orig, m, streams=streams)
