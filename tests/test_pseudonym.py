@@ -49,14 +49,14 @@ def test_short_names_never_hang():
 
 def test_compositional_consistency():
     m = Mapper()
-    m.add("L. Spruyt", "person")
-    m.add("Spruyt", "person")
-    m.add("mbokj@mek.dtu.dk", "email")
-    m.add("mbokj", "account")
-    m.add("dtu.dk", "domain")
-    assert m.pseudonym("L. Spruyt").split()[-1] == m.pseudonym("Spruyt")
-    local, dom = m.pseudonym("mbokj@mek.dtu.dk").split("@")
-    assert local == m.pseudonym("mbokj") and dom.endswith(m.pseudonym("dtu.dk"))
+    m.add("L. Verhoef", "person")
+    m.add("Verhoef", "person")
+    m.add("alind@mech.example.org", "email")
+    m.add("alind", "account")
+    m.add("example.org", "domain")
+    assert m.pseudonym("L. Verhoef").split()[-1] == m.pseudonym("Verhoef")
+    local, dom = m.pseudonym("alind@mech.example.org").split("@")
+    assert local == m.pseudonym("alind") and dom.endswith(m.pseudonym("example.org"))
 
 
 def test_format_words_never_loaded(tmp_path):
