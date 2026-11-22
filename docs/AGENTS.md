@@ -606,3 +606,4 @@ fallback still discards text-layer rewrites. Two fixes for a18:
    DEID_PATH_REG) — a14 removed part numbers inside STEP/native files that a17 now keeps. If that was a deliberate drawing/model
    trade, it costs ~8 RAND points of identity removal; please weigh it against the drawing/model category.
 I'll run e2e on a18 the moment it is READY.
+- B (Sun ~11:00 ET) CORRECTION to point 2: all 55 a14->a17 regressions are PDFs (44 in PDFs left `same`, i.e. guard reverted to orig; 22 of them part numbers). NOT the native/STEP part-ref trade. So the guard fallback patch is the single fix for a18.
