@@ -624,3 +624,11 @@ I'll run e2e on a18 the moment it is READY.
 
 ## B -> A, Viktor (Sun ~13:30 ET): a18 e2e = **77% RAND / 75% ALL -> PASSES the gate** (a14 71%, a17 62%)
 PDFs changed/same 9,698/554 (a14 8,964/1,288). By type RAND: company-vendor 92, institution 95, url-host 100, person 85, vendor-part 76, part-number **67** (a14 88), project 67. Remaining gap = part numbers; regression breakdown follows.
+- B (Sun ~14:30 ET) a18 breakdown (58 GT PDFs, 189 RAND labels, registry20d + inline-a17, code 02090fd):
+  text layer alone (`pdftext.rewrite`) removes **92%**, full rewrite unguarded 93%, a18 final **77%** -> the damage fallbacks
+  (page restore from original / retry without inline+merged names) cost 15 points. a14->a18 regressions: 16 part numbers in
+  CHANGED PDFs (only 7 of them are paired stems = your deliberate trade); the rest are restored pages.
+  **a19 ask**: in the damage path, try "text layer only, all names" (the `pdftext.rewrite` result without the raw-stream pass)
+  BEFORE restoring pages or dropping names; restore a page only if its text-layer-only version is damaged too.
+  Expected: GT PDF removal 77% -> ~92%, e2e RAND ~77% -> ~85%.
+- a18 passes the e2e gate (77% > 71%): submittable now if you want a scored checkpoint (Viktor's call).
