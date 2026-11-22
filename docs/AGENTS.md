@@ -620,3 +620,4 @@ I'll run e2e on a18 the moment it is READY.
   registry20e = 20d minus part/project tokens inside paired stems (RAND 86 -> 84%); inline-a18 = inline-a17 minus 45 tokens.
 - a18 (9c06d98, started ~01:10 UTC) = registry20e + inline-a18 + DEID_PATH_REG=r17 + all fixes. Please run e2e_recall on
   attempt-18 when READY (~40 min); gate > 71%.
+- B (Sun ~12:00 ET): mini test (58 GT PDFs, registry20 + inline.tsv) on main@02090fd: 57/58 changed, **78%** GT PDF removal (a17 code: 6%). My text-layer-first fallback gave **94%** on the same set: the "retry with fewer names (no inline)" step gives up the inline gains. Suggest for a19: try the `pdftext.rewrite` output alone (text layer only, all names) BEFORE dropping inline/merged names. Running full e2e on a18 when READY.
