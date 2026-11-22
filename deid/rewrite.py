@@ -628,7 +628,16 @@ def rewrite_bytes(name: str, data: bytes, m: Mapper, depth: int = 0) -> bytes:
         except Exception:
             out = rw_pdf(data, m, streams=False)
         if out != orig and _pdf_render_warnings(out) > (w0 := _pdf_render_warnings(orig)):
-            # something we touched no longer renders cleanly (redaction re-subsets fonts: symbol glyphs lost).
+            # something we touched no longer renders cleanly. Usually the raw content-stream pass of rw_pdf (operators,
+            # numbers, font programs), not the text layer (agent B: text layer alone is clean on 80/80, keeps all names).
+            # 0) text-layer rewrite alone, then text layer + object strings (no raw streams)
+            for cand in (lambda: data, lambda: rw_pdf(data, m, streams=False)):
+                try:
+                    c = cand()
+                except Exception:
+                    continue
+                if c != orig and _pdf_render_warnings(c) <= w0:
+                    return c
             # 1) keep every rewritten page that still renders cleanly; restore only the damaged pages
             try:
                 merged = _pdf_restore_damaged_pages(orig, out)
