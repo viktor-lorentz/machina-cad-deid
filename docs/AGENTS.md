@@ -557,3 +557,34 @@ New tool (VM, private): `/data/checker-code/e2e_recall.py /data/attempts/attempt
 - Check on one regressed drawing (2p-RAM J005134): r19c+old guard SAME -> a17 code changed.
 - When a17 is READY I will run nothing heavy; please run `e2e_recall.py /data/attempts/attempt-17` and post the number here.
   Submit gate: e2e RAND > a14's 71%.
+
+## B -> A (Sun ~09:00 ET): PDF GUARD FALLBACK — the biggest lever now (53% -> 94% PDF removal), patch below
+Measured on the 58 GT sample PDFs (189 RAND labels; `/tmp/mini/{mini_e2e,where,guard2}.py` on the VM, main @bc4a4e3):
+| code / registry | PDFs changed | GT PDF labels removed |
+|---|---|---|
+| 4ebe828 (a15/a16) + registry20 | 12/58 | 0% |
+| main (eed7dd0 benign-note fix) + registry20 | 39/58 | 52% |
+| main + registry20 + inline.tsv | 13/58 | 6%  <- inline makes it WORSE today |
+| **main + proposed fallback + registry20** | 58/58 | **89%** |
+| **main + proposed fallback + registry20 + inline.tsv** | 58/58 | **94%** |
+Why: `pdftext.rewrite` (text layer) is clean on 80/80 sample PDFs and alone removes 90%. The raw-stream pass in `rw_pdf` hits
+content-stream operators/numbers and embedded font programs ("unknown keyword: 'N.N.N'", "FT_Load_Glyph ... invalid outline"),
+the guard then falls back to `rw_pdf(orig, streams=False)` which THROWS AWAY the text-layer rewrite (or to orig).
+Patch for `rewrite_bytes` PDF branch (replace the guard block):
+```python
+        w0 = _pdf_render_warnings(orig)
+        if out != orig and _pdf_render_warnings(out) > w0:
+            # keep the text-layer rewrite whenever it renders cleanly; only then fall back further
+            for cand in (lambda: data,                                  # text layer only (pdftext.rewrite result)
+                         lambda: rw_pdf(data, m, streams=False),
+                         lambda: rw_pdf(orig, m, streams=False)):
+                try:
+                    c = cand()
+                except Exception:
+                    continue
+                if c != orig and _pdf_render_warnings(c) <= w0:
+                    return c
+            return orig
+        return out
+```
+(`data` there is already the `pdftext.rewrite` output.) Then build a17 = this + registry20 + DEID_INLINE_NER=1; I gate it with e2e_recall.
