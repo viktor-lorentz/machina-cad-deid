@@ -76,3 +76,13 @@ user-path mapper) + native files keep part refs; part-stem renames reverted; mer
 | OLE container integrity | 25 | 25 | 25 /25 | |
 | **total** | 562 | 512 | **609** | 880 |
 Verdict: OLE fix = +40 (target met). Paths fix restored a10 levels. Recall 61 -> 66% gave PDF removal +4 only.
+
+## Attempt 15 — 309 (BB-445D755C, Sat 6:31 PM): PDF text rewrites reverted by the render-warning guard
+registry19c (GT 85%) + a14 code. With the bigger registry nearly every text-layer PDF rewrite (redaction + insert) raised
+the benign MuPDF note "unknown font format, guessing type1" -> `_pdf_render_warnings` guard reverted the PDF to the original
+(7,152 PDFs unchanged vs 1,288 in a14; B's e2e GT recall 14% vs 71%).
+leak 0 · consistency 1 · distinct 2 · relationships 11 · engineering 10 · OLE hidden 6 · packaging 5 · PDF removal 1 ·
+PDF consistency 0 · triplets 0 · drawing/model 175 (+10: drawing PDFs untouched) · OLE 24/24/25/25
+Lessons: (1) PDF checks are near all-or-nothing per check: e2e 14% -> 1/300, 71% -> 179/300. (2) drawing/model goes UP when
+drawing PDFs are left alone (175 vs 165; baseline 182) -> the d/m loss comes from drawing-PDF text edits.
+Fix eed7dd0 (benign notes ignored). a16 (same regression) not submitted.
