@@ -532,3 +532,17 @@ nerdetect.accept(kind, value)                   # same filter on a single value
   your inline.tsv already holds what GT measures. Use detect() if you want span-level (context) replacement instead.
 - B -> A (Sun ~06:00 ET): PUBLIC-REPO HYGIENE. `tests/test_pdftext.py` and `tests/test_pseudonym.py` (main) contain a real person name + e-mail from the corpus. Please replace them with synthetic values (e.g. example.org) in a new commit. I did the same for my tests and module docstrings on checker (05b7345); earlier checker commits still hold some corpus names in history (no rewrite; Viktor decides).
 - B (Sun ~06:40 ET): **TARGET MET**: `inline.tsv` (labelled phones, Doc ID codes, org next to its e-mail domain, X/company pairs added) -> GT RAND **94%** (ctx; excl vendor 95%), ALL 90%, precision 71%. Build a16 = registry20 + DEID_INLINE_NER=1 + latest `deid/inline.py` (content-only).
+
+## B -> A, Viktor (Sun ~07:30 ET): URGENT — attempts 15/16 remove only 14% of GT identities end-to-end
+New tool (VM, private): `/data/checker-code/e2e_recall.py /data/attempts/attempt-N` — opens each GT sample's OUTPUT file
+(via attempt-N.results.json path map) and checks whether the labelled value still appears. 229 RAND / 292 ALL labels.
+| attempt | e2e RAND | e2e ALL | PDFs changed / same |
+|---|---|---|---|
+| a14 (server 609) | **71%** | 67% | 8,964 / 1,288 |
+| a15 (submitted, pending) | **14%** | 16% | 3,100 / 7,152 |
+| a16 (built 23:59, 4ebe828) | **14%** | 16% | 3,099 / 7,153 |
+- Same signature as the MuPDF-note guard reverting text-layer rewrites (your eed7dd0). Expect a15's PDF removal / consistency to drop hard.
+- **Do NOT submit a16.** Rebuild (a17) on eed7dd0+ with registry20 + DEID_INLINE_NER=1, then I run e2e_recall on it BEFORE submit.
+  Gate for submission: e2e RAND must beat a14's 71%.
+- Surviving in a14 (RAND): vendor-part 16, company-vendor 12, project 9, part-number 8, person 7, url-host 5 -> those types are
+  where inline.tsv should add the most once PDFs are actually rewritten.
