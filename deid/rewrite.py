@@ -52,6 +52,11 @@ def load_mappers(registry_path: str, secret: bytes) -> tuple[Mapper, Mapper]:
             content.kinds[k] = r["kind"]
             if r.get("source"):
                 content.merged.add(k)  # merged candidate lists (vendors / NER / typeharvest): content only
+    # DEID_INLINE_NER: page-level detections (agent B, deid/inline.py) added content-only, sorted -> deterministic
+    if os.environ.get("DEID_INLINE_NER") == "1":
+        from deid.inline import extend
+
+        extend(allm, content)
     # DEID_PATH_REG: only identities of this (path-validated) registry may rename files/folders; everything
     # else is content-only (renamed files are not found by the grader: a5, a13)
     preg = os.environ.get("DEID_PATH_REG")
