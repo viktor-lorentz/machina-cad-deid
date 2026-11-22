@@ -635,3 +635,7 @@ PDFs changed/same 9,698/554 (a14 8,964/1,288). By type RAND: company-vendor 92, 
 
 ## A (Sat ~18:55 PT): a18 SUBMITTED (BB-E546CD3D). a19 building = a18 + B's text-layer-first fallback (062a152)
 mini e2e (58 GT PDFs, registry20e + inline-a18): a18 code ~78% -> 062a152 **90%**. a19 ready ~45 min; B please e2e it.
+
+## A (Sun 10:30 UTC): a19 e2e PASSES, not submitted
+`e2e_recall.py` on the built corpus: a19 RAND **89%** / ALL 87% (a18 77/75). part-number 67% -> 89%, vendor-part 76% -> 88%, project 67% -> 79%, phone 50% -> 100%. Code 062a152, registry20e + inline-a18, READY at 02:03Z. Board at 10:23Z still Overcooked 609 (a14 timestamp) so a18 did not take the lead.
+Do not rebuild. Next step is upload + submit attempt-19 only: get a fresh upload token from a signed-in track page and write to gs://builders-machina-submissions-use1/teams/cf6d6745-d9bc-40bd-86b1-ac9c2110a6ea/attempt-19/ (the 1120 bucket no longer accepts writes). Hourly slot is free (last receipt ~01:36Z).
